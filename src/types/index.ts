@@ -6,8 +6,10 @@ export interface Product {
   estoque_fisico: number;
   estoque_site: number;
   preco: number;
+  preco_custo: number;
   fornecedor: Supplier;
-  afiliado_id?: string; // Produto pode estar com afiliado
+  afiliado_estoque?: { afiliado_id: string; quantidade: number }[];
+  fotos?: string[];
 }
 
 export interface Supplier {
@@ -26,7 +28,21 @@ export interface Conjunto {
   estoque_disponivel: number;
 }
 
+export interface Kit {
+  id: string;
+  nome: string;
+  descricao: string;
+  preco: number;
+  produtos: KitProduct[];
+  estoque_disponivel: number;
+}
+
 export interface ConjuntoProduct {
+  produto_id: string;
+  quantidade: number;
+}
+
+export interface KitProduct {
   produto_id: string;
   quantidade: number;
 }
@@ -38,6 +54,7 @@ export interface Affiliate {
   telefone: string;
   comissao: number;
   chave_pix: string;
+  tipo_chave_pix: 'aleatoria' | 'cpf' | 'telefone';
   ativo: boolean;
 }
 
@@ -53,6 +70,15 @@ export interface Sale {
 export interface SaleProduct {
   produto_id?: string;
   conjunto_id?: string;
+  kit_id?: string;
   quantidade: number;
   preco_unitario: number;
+}
+
+export interface DashboardStats {
+  vendas_mensais: number;
+  dias_mais_vendem: { dia: number; vendas: number }[];
+  produtos_mais_vendidos: { produto_id: string; quantidade: number }[];
+  meio_mais_vende: { online: number; fisica: number };
+  afiliados_stats: { afiliado_id: string; vendas: number; comissao_total: number }[];
 }

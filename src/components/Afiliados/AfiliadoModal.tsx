@@ -19,7 +19,8 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
     email: '',
     telefone: '',
     comissao: '',
-    chave_pix: ''
+    chave_pix: '',
+    tipo_chave_pix: 'aleatoria' as 'aleatoria' | 'cpf' | 'telefone'
   });
 
   useEffect(() => {
@@ -29,7 +30,8 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
         email: afiliado.email,
         telefone: afiliado.telefone,
         comissao: afiliado.comissao.toString(),
-        chave_pix: afiliado.chave_pix
+        chave_pix: afiliado.chave_pix,
+        tipo_chave_pix: afiliado.tipo_chave_pix
       });
     } else {
       setFormData({
@@ -37,10 +39,25 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
         email: '',
         telefone: '',
         comissao: '',
-        chave_pix: ''
+        chave_pix: '',
+        tipo_chave_pix: 'aleatoria'
       });
     }
   }, [afiliado, isOpen]);
+
+  const formatTelefone = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return value;
+  };
+
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatTelefone(e.target.value);
+    setFormData({ ...formData, telefone: formatted });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +67,7 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
       telefone: formData.telefone,
       comissao: parseFloat(formData.comissao),
       chave_pix: formData.chave_pix,
+      tipo_chave_pix: formData.tipo_chave_pix,
       ativo: afiliado?.ativo ?? true
     };
     onSave(afiliadoData);
@@ -89,8 +107,9 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
             <Input
               id="telefone"
               value={formData.telefone}
-              onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+              onChange={handleTelefoneChange}
               placeholder="(11) 99999-9999"
+              maxLength={15}
               required
             />
           </div>
@@ -110,12 +129,31 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
           </div>
 
           <div>
+            <Label htmlFor="tipo_chave_pix">Tipo de Chave PIX *</Label>
+            <select
+              id="tipo_chave_pix"
+              value={formData.tipo_chave_pix}
+              onChange={(e) => setFormData({ ...formData, tipo_chave_pix: e.target.value as 'aleatoria' | 'cpf' | 'telefone' })}
+              className="w-full rounded border p-2"
+              required
+            >
+              <option value="aleatoria">Chave Aleatória</option>
+              <option value="cpf">CPF</option>
+              <option value="telefone">Telefone</option>
+            </select>
+          </div>
+
+          <div>
             <Label htmlFor="chave_pix">Chave PIX *</Label>
             <Input
               id="chave_pix"
               value={formData.chave_pix}
               onChange={(e) => setFormData({ ...formData, chave_pix: e.target.value })}
-              placeholder="E-mail, telefone ou chave aleatória"
+              placeholder={
+                formData.tipo_chave_pix === 'cpf' ? 'xxx.xxx.xxx-xx' :
+                formData.tipo_chave_pix === 'telefone' ? '11999999999' :
+                'Chave aleatória gerada pelo banco'
+              }
               required
             />
           </div>
@@ -124,7 +162,7 @@ const AfiliadoModal: React.FC<AfiliadoModalProps> = ({ isOpen, onClose, onSave, 
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary-light">
+            <Button type="submit" className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80">
               {afiliado ? 'Salvar' : 'Cadastrar'}
             </Button>
           </div>

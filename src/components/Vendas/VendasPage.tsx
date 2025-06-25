@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import Header from '../Layout/Header';
 import VendaModal from './VendaModal';
-import { mockSales, mockProducts, mockConjuntos, mockAffiliates } from '../../data/mockData';
+import { mockSales, mockProducts, mockConjuntos, mockKits, mockAffiliates } from '../../data/mockData';
 import { Sale } from '../../types';
 
 interface VendasPageProps {
@@ -19,7 +19,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
 
   const filteredSales = sales.filter(sale =>
     sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.afiliado?.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    sale.afiliado?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -30,7 +30,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         actions={
           <Button
             onClick={() => setShowVendaModal(true)}
-            className="bg-vertttraue-primary hover:bg-vertttraue-primary-light"
+            className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
           >
             Nova Venda
           </Button>
@@ -71,8 +71,8 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
                         {sale.tipo === 'online' ? 'Online' : 'Física'}
                       </Badge>
                     </td>
-                    <td className="p-2">{sale.afiliado?.nome || '-'}</td>
-                    <td className="p-2 font-bold text-vertttraue-primary">R$ {sale.total.toFixed(2)}</td>
+                    <td className="p-2">{sale.afiliado?.nome_completo || '-'}</td>
+                    <td className="p-2 font-bold text-vertttraue-primary">R$ {sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="p-2">
                       <Button size="sm" variant="outline">
                         Detalhes
@@ -97,6 +97,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         onClose={() => setShowVendaModal(false)}
         products={mockProducts}
         conjuntos={mockConjuntos}
+        kits={mockKits}
         affiliates={mockAffiliates}
       />
     </div>

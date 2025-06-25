@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Product, Conjunto, Affiliate } from '../../types';
+import { Product, Conjunto, Kit, Affiliate } from '../../types';
 
 interface VendaModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
   conjuntos: Conjunto[];
+  kits: Kit[];
   affiliates: Affiliate[];
 }
 
@@ -20,17 +21,23 @@ const VendaModal: React.FC<VendaModalProps> = ({
   onClose, 
   products, 
   conjuntos, 
+  kits,
   affiliates 
 }) => {
   const [formData, setFormData] = useState({
     tipo: 'online' as 'online' | 'fisica',
     afiliado_id: '',
-    items: [] as { type: 'produto' | 'conjunto'; id: string; quantidade: number; preco: number }[]
+    items: [] as { type: 'produto' | 'conjunto' | 'kit'; id: string; quantidade: number; preco: number }[]
   });
 
-  const [selectedType, setSelectedType] = useState<'produto' | 'conjunto'>('produto');
+  const [selectedType, setSelectedType] = useState<'produto' | 'conjunto' | 'kit'>('produto');
   const [selectedId, setSelectedId] = useState('');
   const [quantidade, setQuantidade] = useState('');
+
+  const getNextSaleId = () => {
+    const nextNumber = (1).toString().padStart(3, '0');
+    return `VENDA${nextNumber}`;
+  };
 
   const addItem = () => {
     if (!selectedId || !quantidade) return;
@@ -39,9 +46,12 @@ const VendaModal: React.FC<VendaModalProps> = ({
     if (selectedType === 'produto') {
       const produto = products.find(p => p.id === selectedId);
       preco = produto?.preco || 0;
-    } else {
+    } else if (selectedType === 'conjunto') {
       const conjunto = conjuntos.find(c => c.id === selectedId);
-      preco = conjunto ? conjunto.preco * 0.9 : 0;
+      preco = conjunto?.preco || 0;
+    } else {
+      const kit = kits.find(k => k.id === selectedId);
+      preco = kit?.preco || 0;
     }
 
     const existingIndex = formData.items.findIndex(
@@ -49,7 +59,6 @@ const VendaModal: React.FC<VendaModalProps> = ({
     );
 
     if (existingIndex >= 0) {
-      // Soma a quantidade ao invés de substituir
       const newItems = [...formData.items];
       newItems[existingIndex].quantidade += parseInt(quantidade);
       setFormData({ ...formData, items: newItems });
@@ -85,6 +94,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Venda registrada:', {
+      id: getNextSaleId(),
       ...formData,
       total: calculateTotal(),
       data: new Date()
@@ -97,9 +107,34 @@ const VendaModal: React.FC<VendaModalProps> = ({
     if (item.type === 'produto') {
       const produto = products.find(p => p.id === item.id);
       return produto?.nome || 'Produto não encontrado';
-    } else {
+    } else if (item.type === 'conjunto') {
       const conjunto = conjuntos.find(c => c.id === item.id);
       return conjunto?.nome || 'Conjunto não encontrado';
+    } else {
+      const kit = kits.find(k => k.id === item.id);
+      return kit?.nome || 'Kit não encontrado';
+    }
+  };
+
+  const renderOptions = () => {
+    if (selectedType === 'produto') {
+      return products.map(product => (
+        <option key={product.id} value={product.id}>
+          {product.nome} - R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </option>
+      ));
+    } else if (selectedType === 'conjunto') {
+      return conjuntos.map(conjunto => (
+        <option key={conjunto.id} value={conjunto.id}>
+          {conjunto.nome} - R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </option>
+      ));
+    } else {
+      return kits.map(kit => (
+        <option key={kit.id} value={kit.id}>
+          {kit.nome} - R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </option>
+      ));
     }
   };
 
@@ -148,13 +183,14 @@ const VendaModal: React.FC<VendaModalProps> = ({
               <select
                 value={selectedType}
                 onChange={(e) => {
-                  setSelectedType(e.target.value as 'produto' | 'conjunto');
+                  setSelectedType(e.target.value as 'produto' | 'conjunto' | 'kit');
                   setSelectedId('');
                 }}
                 className="rounded border p-2"
               >
                 <option value="produto">Produto</option>
                 <option value="conjunto">Conjunto</option>
+                <option value="kit">Kit</option>
               </select>
               
               <select
@@ -163,18 +199,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
                 className="flex-1 rounded border p-2"
               >
                 <option value="">Selecione...</option>
-                {selectedType === 'produto' 
-                  ? products.map(product => (
-                      <option key={product.id} value={product.id}>
-                        {product.nome} - R$ {product.preco.toFixed(2)}
-                      </option>
-                    ))
-                  : conjuntos.map(conjunto => (
-                      <option key={conjunto.id} value={conjunto.id}>
-                        {conjunto.nome} - R$ {(conjunto.preco * 0.9).toFixed(2)}
-                      </option>
-                    ))
-                }
+                {renderOptions()}
               </select>
               
               <Input
@@ -194,13 +219,13 @@ const VendaModal: React.FC<VendaModalProps> = ({
               {formData.items.map((item, index) => (
                 <div key={`${item.type}-${item.id}-${index}`} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <div className="flex items-center gap-2">
-                    <Badge variant={item.type === 'produto' ? 'default' : 'secondary'}>
+                    <Badge variant={item.type === 'produto' ? 'default' : item.type === 'conjunto' ? 'secondary' : 'outline'}>
                       {item.type}
                     </Badge>
                     <span>{getItemName(item)} (x{item.quantidade})</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">R$ {(item.preco * item.quantidade).toFixed(2)}</span>
+                    <span className="font-semibold">R$ {(item.preco * item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     <Button
                       type="button"
                       variant="destructive"
@@ -218,7 +243,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
           {formData.items.length > 0 && (
             <div className="border rounded p-4 bg-gray-50">
               <div className="text-lg font-bold text-vertttraue-primary">
-                Total: R$ {calculateTotal().toFixed(2)}
+                Total: R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
             </div>
           )}
@@ -229,7 +254,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary-light"
+              className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={formData.items.length === 0}
             >
               Registrar Venda

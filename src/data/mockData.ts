@@ -1,5 +1,5 @@
 
-import { Product, Conjunto, Affiliate, Sale, Supplier } from '../types';
+import { Product, Conjunto, Kit, Affiliate, Sale, Supplier } from '../types';
 
 export const mockSuppliers: Supplier[] = [
   {
@@ -30,6 +30,7 @@ export const mockAffiliates: Affiliate[] = [
     telefone: '(11) 99999-0001',
     comissao: 10,
     chave_pix: 'joao@email.com',
+    tipo_chave_pix: 'cpf',
     ativo: true
   },
   {
@@ -39,6 +40,7 @@ export const mockAffiliates: Affiliate[] = [
     telefone: '(11) 99999-0002',
     comissao: 8,
     chave_pix: '11999990002',
+    tipo_chave_pix: 'telefone',
     ativo: true
   }
 ];
@@ -51,8 +53,10 @@ export const mockProducts: Product[] = [
     estoque_fisico: 60,
     estoque_site: 40,
     preco: 29.99,
+    preco_custo: 15.50,
     fornecedor: mockSuppliers[0],
-    afiliado_id: 'AFF001'
+    afiliado_estoque: [],
+    fotos: []
   },
   {
     id: 'PROD002',
@@ -61,7 +65,10 @@ export const mockProducts: Product[] = [
     estoque_fisico: 30,
     estoque_site: 20,
     preco: 49.99,
-    fornecedor: mockSuppliers[1]
+    preco_custo: 25.00,
+    fornecedor: mockSuppliers[1],
+    afiliado_estoque: [],
+    fotos: []
   }
 ];
 
@@ -75,13 +82,27 @@ export const mockConjuntos: Conjunto[] = [
       { produto_id: 'PROD001', quantidade: 2 },
       { produto_id: 'PROD002', quantidade: 1 }
     ],
-    estoque_disponivel: 25
+    estoque_disponivel: 20
+  }
+];
+
+export const mockKits: Kit[] = [
+  {
+    id: 'KIT001',
+    nome: 'Kit Premium',
+    descricao: 'Kit premium com produtos selecionados',
+    preco: 89.99,
+    produtos: [
+      { produto_id: 'PROD001', quantidade: 1 },
+      { produto_id: 'PROD002', quantidade: 2 }
+    ],
+    estoque_disponivel: 15
   }
 ];
 
 export const mockSales: Sale[] = [
   {
-    id: 'SALE001',
+    id: 'VENDA001',
     data: new Date('2024-06-20'),
     produtos: [
       { produto_id: 'PROD001', quantidade: 2, preco_unitario: 29.99 }

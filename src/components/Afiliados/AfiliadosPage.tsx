@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import Header from '../Layout/Header';
 import AfiliadoModal from './AfiliadoModal';
-import { mockAffiliates } from '../../data/mockData';
+import AfiliadoProdutosModal from './AfiliadoProdutosModal';
+import { mockAffiliates, mockProducts } from '../../data/mockData';
 import { Affiliate } from '../../types';
 
 interface AfiliadosPageProps {
@@ -15,7 +16,9 @@ interface AfiliadosPageProps {
 const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
   const [affiliates, setAffiliates] = useState<Affiliate[]>(mockAffiliates);
   const [showAfiliadoModal, setShowAfiliadoModal] = useState(false);
+  const [showProdutosModal, setShowProdutosModal] = useState(false);
   const [editingAfiliado, setEditingAfiliado] = useState<Affiliate | null>(null);
+  const [selectedAfiliado, setSelectedAfiliado] = useState<Affiliate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredAffiliates = affiliates.filter(affiliate =>
@@ -32,6 +35,11 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
   const handleEditAfiliado = (affiliate: Affiliate) => {
     setEditingAfiliado(affiliate);
     setShowAfiliadoModal(true);
+  };
+
+  const handleViewProdutos = (affiliate: Affiliate) => {
+    setSelectedAfiliado(affiliate);
+    setShowProdutosModal(true);
   };
 
   const handleSaveAfiliado = (afiliadoData: any) => {
@@ -56,7 +64,7 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
               setEditingAfiliado(null);
               setShowAfiliadoModal(true);
             }}
-            className="bg-vertttraue-primary hover:bg-vertttraue-primary-light"
+            className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
           >
             Cadastrar Afiliado
           </Button>
@@ -84,6 +92,7 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
                   <th className="text-left p-2">Telefone</th>
                   <th className="text-left p-2">Comissão (%)</th>
                   <th className="text-left p-2">Chave PIX</th>
+                  <th className="text-left p-2">Tipo PIX</th>
                   <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Ações</th>
                 </tr>
@@ -96,6 +105,12 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
                     <td className="p-2">{affiliate.telefone}</td>
                     <td className="p-2">{affiliate.comissao}%</td>
                     <td className="p-2 font-mono text-xs">{affiliate.chave_pix}</td>
+                    <td className="p-2">
+                      <Badge variant="outline" className="text-xs">
+                        {affiliate.tipo_chave_pix === 'aleatoria' ? 'Aleatória' : 
+                         affiliate.tipo_chave_pix === 'cpf' ? 'CPF' : 'Telefone'}
+                      </Badge>
+                    </td>
                     <td className="p-2">
                       <Badge variant={affiliate.ativo ? 'default' : 'secondary'}>
                         {affiliate.ativo ? 'Ativo' : 'Inativo'}
@@ -117,6 +132,14 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
                           className="hover:bg-vertttraue-primary hover:text-white"
                         >
                           Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleViewProdutos(affiliate)}
+                          className="hover:bg-vertttraue-primary hover:text-white"
+                        >
+                          Produtos
                         </Button>
                       </div>
                     </td>
@@ -142,6 +165,16 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
         }}
         onSave={handleSaveAfiliado}
         afiliado={editingAfiliado}
+      />
+
+      <AfiliadoProdutosModal
+        isOpen={showProdutosModal}
+        onClose={() => {
+          setShowProdutosModal(false);
+          setSelectedAfiliado(null);
+        }}
+        afiliado={selectedAfiliado}
+        products={mockProducts}
       />
     </div>
   );
