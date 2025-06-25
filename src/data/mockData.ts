@@ -53,8 +53,9 @@ export const mockProducts: Product[] = [
     estoque_fisico: 60,
     estoque_site: 40,
     preco: 29.99,
-    preco_custo: 15.50,
+    preco_compra: 15.50,
     fornecedor: mockSuppliers[0],
+    afiliado_id: '',
     afiliado_estoque: [],
     fotos: []
   },
@@ -65,8 +66,9 @@ export const mockProducts: Product[] = [
     estoque_fisico: 30,
     estoque_site: 20,
     preco: 49.99,
-    preco_custo: 25.00,
+    preco_compra: 25.00,
     fornecedor: mockSuppliers[1],
+    afiliado_id: '',
     afiliado_estoque: [],
     fotos: []
   }
