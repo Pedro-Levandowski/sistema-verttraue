@@ -1,20 +1,28 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Product } from '../../types';
+import { Product, Conjunto } from '../../types';
 
 interface ConjuntoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (conjunto: any) => void;
   products: Product[];
+  conjunto?: Conjunto | null;
 }
 
-const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ isOpen, onClose, products }) => {
+const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  products, 
+  conjunto 
+}) => {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -23,6 +31,22 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ isOpen, onClose, products
   
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantidade, setQuantidade] = useState('');
+
+  useEffect(() => {
+    if (conjunto) {
+      setFormData({
+        nome: conjunto.nome,
+        descricao: conjunto.descricao,
+        produtos: conjunto.produtos
+      });
+    } else {
+      setFormData({
+        nome: '',
+        descricao: '',
+        produtos: []
+      });
+    }
+  }, [conjunto, isOpen]);
 
   const addProduct = () => {
     if (selectedProductId && quantidade) {
@@ -54,7 +78,8 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ isOpen, onClose, products
     
     return Math.min(...formData.produtos.map(cp => {
       const produto = products.find(p => p.id === cp.produto_id);
-      return produto ? Math.floor(produto.estoque_total / cp.quantidade) : 0;
+      const estoqueTotal = produto ? produto.estoque_fisico + produto.estoque_site : 0;
+      return Math.floor(estoqueTotal / cp.quantidade);
     }));
   };
 
@@ -68,20 +93,21 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ isOpen, onClose, products
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Conjunto criado:', {
-      ...formData,
+    const conjuntoData = {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      produtos: formData.produtos,
       estoque_disponivel: calculateEstoque(),
       preco: calculatePreco()
-    });
-    onClose();
-    setFormData({ nome: '', descricao: '', produtos: [] });
+    };
+    onSave(conjuntoData);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Gerenciar Conjuntos</DialogTitle>
+          <DialogTitle>{conjunto ? 'Editar Conjunto' : 'Criar Conjunto'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -172,7 +198,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ isOpen, onClose, products
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary-light"
               disabled={formData.produtos.length === 0}
             >
-              Criar Conjunto
+              {conjunto ? 'Salvar' : 'Criar Conjunto'}
             </Button>
           </div>
         </form>

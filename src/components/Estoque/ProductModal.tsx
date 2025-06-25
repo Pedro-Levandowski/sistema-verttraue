@@ -1,49 +1,89 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Product, Supplier, Affiliate } from '../../types';
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (product: any) => void;
+  product?: Product | null;
+  suppliers: Supplier[];
+  affiliates: Affiliate[];
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
+const ProductModal: React.FC<ProductModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  product, 
+  suppliers, 
+  affiliates 
+}) => {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
-    estoque_total: '',
     estoque_fisico: '',
     estoque_site: '',
     preco: '',
-    fornecedor_nome: '',
-    fornecedor_cidade: ''
+    fornecedor_id: '',
+    afiliado_id: ''
   });
+
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        nome: product.nome,
+        descricao: product.descricao,
+        estoque_fisico: product.estoque_fisico.toString(),
+        estoque_site: product.estoque_site.toString(),
+        preco: product.preco.toString(),
+        fornecedor_id: product.fornecedor.id,
+        afiliado_id: product.afiliado_id || ''
+      });
+    } else {
+      setFormData({
+        nome: '',
+        descricao: '',
+        estoque_fisico: '',
+        estoque_site: '',
+        preco: '',
+        fornecedor_id: '',
+        afiliado_id: ''
+      });
+    }
+  }, [product, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Produto adicionado:', formData);
-    onClose();
-    setFormData({
-      nome: '',
-      descricao: '',
-      estoque_total: '',
-      estoque_fisico: '',
-      estoque_site: '',
-      preco: '',
-      fornecedor_nome: '',
-      fornecedor_cidade: ''
-    });
+    
+    const selectedSupplier = suppliers.find(s => s.id === formData.fornecedor_id);
+    if (!selectedSupplier) return;
+
+    const productData = {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      estoque_fisico: parseInt(formData.estoque_fisico),
+      estoque_site: parseInt(formData.estoque_site),
+      preco: parseFloat(formData.preco),
+      fornecedor: selectedSupplier,
+      afiliado_id: formData.afiliado_id || undefined
+    };
+
+    onSave(productData);
   };
+
+  const estoqueTotal = (parseInt(formData.estoque_fisico) || 0) + (parseInt(formData.estoque_site) || 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Adicionar Produto</DialogTitle>
+          <DialogTitle>{product ? 'Editar Produto' : 'Adicionar Produto'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,13 +112,13 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
               <Input
                 id="estoque_total"
                 type="number"
-                value={formData.estoque_total}
-                onChange={(e) => setFormData({ ...formData, estoque_total: e.target.value })}
-                required
+                value={estoqueTotal}
+                disabled
+                className="bg-gray-100"
               />
             </div>
             <div>
-              <Label htmlFor="estoque_fisico">Est. Físico</Label>
+              <Label htmlFor="estoque_fisico">Est. Físico *</Label>
               <Input
                 id="estoque_fisico"
                 type="number"
@@ -88,7 +128,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
               />
             </div>
             <div>
-              <Label htmlFor="estoque_site">Est. Site</Label>
+              <Label htmlFor="estoque_site">Est. Site *</Label>
               <Input
                 id="estoque_site"
                 type="number"
@@ -100,7 +140,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <Label htmlFor="preco">Preço (R$)</Label>
+            <Label htmlFor="preco">Preço (R$) *</Label>
             <Input
               id="preco"
               type="number"
@@ -112,23 +152,38 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <Label htmlFor="fornecedor_nome">Fornecedor</Label>
-            <Input
-              id="fornecedor_nome"
-              value={formData.fornecedor_nome}
-              onChange={(e) => setFormData({ ...formData, fornecedor_nome: e.target.value })}
+            <Label htmlFor="fornecedor_id">Fornecedor *</Label>
+            <select
+              id="fornecedor_id"
+              value={formData.fornecedor_id}
+              onChange={(e) => setFormData({ ...formData, fornecedor_id: e.target.value })}
+              className="w-full rounded border p-2"
               required
-            />
+            >
+              <option value="">Selecione um fornecedor</option>
+              {suppliers.map(supplier => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.nome} - {supplier.cidade}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <Label htmlFor="fornecedor_cidade">Cidade do Fornecedor</Label>
-            <Input
-              id="fornecedor_cidade"
-              value={formData.fornecedor_cidade}
-              onChange={(e) => setFormData({ ...formData, fornecedor_cidade: e.target.value })}
-              required
-            />
+            <Label htmlFor="afiliado_id">Afiliado (opcional)</Label>
+            <select
+              id="afiliado_id"
+              value={formData.afiliado_id}
+              onChange={(e) => setFormData({ ...formData, afiliado_id: e.target.value })}
+              className="w-full rounded border p-2"
+            >
+              <option value="">Sem afiliado</option>
+              {affiliates.filter(a => a.ativo).map(affiliate => (
+                <option key={affiliate.id} value={affiliate.id}>
+                  {affiliate.nome_completo}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-2 pt-4">
@@ -136,7 +191,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose }) => {
               Cancelar
             </Button>
             <Button type="submit" className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary-light">
-              Adicionar
+              {product ? 'Salvar' : 'Adicionar'}
             </Button>
           </div>
         </form>

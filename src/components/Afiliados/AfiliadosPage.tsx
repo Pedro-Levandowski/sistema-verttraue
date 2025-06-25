@@ -15,17 +15,34 @@ interface AfiliadosPageProps {
 const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
   const [affiliates, setAffiliates] = useState<Affiliate[]>(mockAffiliates);
   const [showAfiliadoModal, setShowAfiliadoModal] = useState(false);
+  const [editingAfiliado, setEditingAfiliado] = useState<Affiliate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredAffiliates = affiliates.filter(affiliate =>
-    affiliate.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    affiliate.contato.toLowerCase().includes(searchTerm.toLowerCase())
+    affiliate.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    affiliate.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const toggleAffiliate = (id: string) => {
     setAffiliates(affiliates.map(affiliate =>
       affiliate.id === id ? { ...affiliate, ativo: !affiliate.ativo } : affiliate
     ));
+  };
+
+  const handleEditAfiliado = (affiliate: Affiliate) => {
+    setEditingAfiliado(affiliate);
+    setShowAfiliadoModal(true);
+  };
+
+  const handleSaveAfiliado = (afiliadoData: any) => {
+    if (editingAfiliado) {
+      setAffiliates(affiliates.map(a => a.id === editingAfiliado.id ? { ...afiliadoData, id: editingAfiliado.id } : a));
+    } else {
+      const newAfiliado = { ...afiliadoData, id: `AFF${Date.now()}`, ativo: true };
+      setAffiliates([...affiliates, newAfiliado]);
+    }
+    setEditingAfiliado(null);
+    setShowAfiliadoModal(false);
   };
 
   return (
@@ -35,7 +52,10 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
         onBack={onBack}
         actions={
           <Button
-            onClick={() => setShowAfiliadoModal(true)}
+            onClick={() => {
+              setEditingAfiliado(null);
+              setShowAfiliadoModal(true);
+            }}
             className="bg-vertttraue-primary hover:bg-vertttraue-primary-light"
           >
             Cadastrar Afiliado
@@ -59,9 +79,11 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2">Nome</th>
-                  <th className="text-left p-2">Contato</th>
+                  <th className="text-left p-2">Nome Completo</th>
+                  <th className="text-left p-2">E-mail</th>
+                  <th className="text-left p-2">Telefone</th>
                   <th className="text-left p-2">Comissão (%)</th>
+                  <th className="text-left p-2">Chave PIX</th>
                   <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Ações</th>
                 </tr>
@@ -69,9 +91,11 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
               <tbody>
                 {filteredAffiliates.map((affiliate) => (
                   <tr key={affiliate.id} className="border-b hover:bg-gray-50">
-                    <td className="p-2 font-semibold">{affiliate.nome}</td>
-                    <td className="p-2">{affiliate.contato}</td>
+                    <td className="p-2 font-semibold">{affiliate.nome_completo}</td>
+                    <td className="p-2">{affiliate.email}</td>
+                    <td className="p-2">{affiliate.telefone}</td>
                     <td className="p-2">{affiliate.comissao}%</td>
+                    <td className="p-2 font-mono text-xs">{affiliate.chave_pix}</td>
                     <td className="p-2">
                       <Badge variant={affiliate.ativo ? 'default' : 'secondary'}>
                         {affiliate.ativo ? 'Ativo' : 'Inativo'}
@@ -86,7 +110,12 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
                         >
                           {affiliate.ativo ? 'Desativar' : 'Ativar'}
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleEditAfiliado(affiliate)}
+                          className="hover:bg-vertttraue-primary hover:text-white"
+                        >
                           Editar
                         </Button>
                       </div>
@@ -107,7 +136,12 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
 
       <AfiliadoModal
         isOpen={showAfiliadoModal}
-        onClose={() => setShowAfiliadoModal(false)}
+        onClose={() => {
+          setShowAfiliadoModal(false);
+          setEditingAfiliado(null);
+        }}
+        onSave={handleSaveAfiliado}
+        afiliado={editingAfiliado}
       />
     </div>
   );

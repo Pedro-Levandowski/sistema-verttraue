@@ -4,33 +4,42 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '../Layout/Header';
 import FornecedorModal from './FornecedorModal';
-import { mockProducts } from '../../data/mockData';
+import { mockProducts, mockSuppliers } from '../../data/mockData';
+import { Supplier } from '../../types';
 
 interface FornecedoresPageProps {
   onBack: () => void;
 }
 
 const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
+  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Extrair fornecedores únicos dos produtos
-  const suppliers = Array.from(
-    new Map(
-      mockProducts.map(product => [
-        `${product.fornecedor.nome}-${product.fornecedor.cidade}`,
-        product.fornecedor
-      ])
-    ).values()
-  );
 
   const filteredSuppliers = suppliers.filter(supplier =>
     supplier.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.cidade.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getSupplierProducts = (supplierName: string) => {
-    return mockProducts.filter(product => product.fornecedor.nome === supplierName);
+  const getSupplierProductCount = (supplierName: string) => {
+    return mockProducts.filter(product => product.fornecedor.nome === supplierName).length;
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setShowFornecedorModal(true);
+  };
+
+  const handleSaveSupplier = (supplierData: any) => {
+    if (editingSupplier) {
+      setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...supplierData, id: editingSupplier.id } : s));
+    } else {
+      const newSupplier = { ...supplierData, id: `SUPP${Date.now()}` };
+      setSuppliers([...suppliers, newSupplier]);
+    }
+    setEditingSupplier(null);
+    setShowFornecedorModal(false);
   };
 
   return (
@@ -40,7 +49,10 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
         onBack={onBack}
         actions={
           <Button
-            onClick={() => setShowFornecedorModal(true)}
+            onClick={() => {
+              setEditingSupplier(null);
+              setShowFornecedorModal(true);
+            }}
             className="bg-vertttraue-primary hover:bg-vertttraue-primary-light"
           >
             Cadastrar Fornecedor
@@ -62,33 +74,33 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
           <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">Lista de Fornecedores</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSuppliers.map((supplier, index) => {
-              const products = getSupplierProducts(supplier.nome);
+            {filteredSuppliers.map((supplier) => {
+              const productCount = getSupplierProductCount(supplier.nome);
               return (
-                <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div key={supplier.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-lg mb-2">{supplier.nome}</h3>
                   <p className="text-gray-600 mb-2">📍 {supplier.cidade}</p>
                   {supplier.contato && (
                     <p className="text-gray-600 mb-2">📞 {supplier.contato}</p>
                   )}
                   <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-gray-500">Produtos associados: {products.length}</p>
-                    <div className="mt-2">
-                      {products.slice(0, 2).map(product => (
-                        <span key={product.id} className="inline-block bg-gray-100 text-xs px-2 py-1 rounded mr-1 mb-1">
-                          {product.nome}
-                        </span>
-                      ))}
-                      {products.length > 2 && (
-                        <span className="text-xs text-gray-500">+{products.length - 2} mais</span>
-                      )}
-                    </div>
+                    <p className="text-sm text-gray-500">Produtos associados: {productCount}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleEditSupplier(supplier)}
+                    >
                       Editar
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => console.log('Ver produtos do fornecedor:', supplier.id)}
+                    >
                       Produtos
                     </Button>
                   </div>
@@ -107,7 +119,12 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
 
       <FornecedorModal
         isOpen={showFornecedorModal}
-        onClose={() => setShowFornecedorModal(false)}
+        onClose={() => {
+          setShowFornecedorModal(false);
+          setEditingSupplier(null);
+        }}
+        onSave={handleSaveSupplier}
+        supplier={editingSupplier}
       />
     </div>
   );

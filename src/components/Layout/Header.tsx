@@ -19,7 +19,7 @@ const Header: React.FC<HeaderProps> = ({ title, onBack, actions }) => {
               variant="ghost"
               size="sm"
               onClick={onBack}
-              className="text-white hover:bg-vertttraue-primary-light"
+              className="text-white hover:bg-vertttraue-primary-light hover:text-white"
             >
               ← Voltar
             </Button>
@@ -32,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ title, onBack, actions }) => {
           <Button
             variant="outline"
             size="sm"
-            className="border-white text-white hover:bg-white hover:text-vertttraue-primary"
+            className="border-white text-white bg-transparent hover:bg-white hover:text-vertttraue-primary"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sair

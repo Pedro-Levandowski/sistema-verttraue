@@ -49,8 +49,9 @@ const VendaModal: React.FC<VendaModalProps> = ({
     );
 
     if (existingIndex >= 0) {
+      // Soma a quantidade ao invés de substituir
       const newItems = [...formData.items];
-      newItems[existingIndex].quantidade = parseInt(quantidade);
+      newItems[existingIndex].quantidade += parseInt(quantidade);
       setFormData({ ...formData, items: newItems });
     } else {
       setFormData({
@@ -133,7 +134,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
                 <option value="">Nenhum afiliado</option>
                 {affiliates.filter(a => a.ativo).map(affiliate => (
                   <option key={affiliate.id} value={affiliate.id}>
-                    {affiliate.nome}
+                    {affiliate.nome_completo}
                   </option>
                 ))}
               </select>

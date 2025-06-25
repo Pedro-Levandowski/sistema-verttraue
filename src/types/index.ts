@@ -3,14 +3,15 @@ export interface Product {
   id: string;
   nome: string;
   descricao: string;
-  estoque_total: number;
   estoque_fisico: number;
   estoque_site: number;
   preco: number;
   fornecedor: Supplier;
+  afiliado_id?: string; // Produto pode estar com afiliado
 }
 
 export interface Supplier {
+  id: string;
   nome: string;
   cidade: string;
   contato?: string;
@@ -32,9 +33,11 @@ export interface ConjuntoProduct {
 
 export interface Affiliate {
   id: string;
-  nome: string;
-  contato: string;
+  nome_completo: string;
+  email: string;
+  telefone: string;
   comissao: number;
+  chave_pix: string;
   ativo: boolean;
 }
 
