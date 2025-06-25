@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Users, Building2, BarChart3 } from 'lucide-react';
 import MenuCard from '../components/Layout/MenuCard';
 import EstoquePage from '../components/Estoque/EstoquePage';
@@ -7,11 +7,32 @@ import VendasPage from '../components/Vendas/VendasPage';
 import AfiliadosPage from '../components/Afiliados/AfiliadosPage';
 import FornecedoresPage from '../components/Fornecedores/FornecedoresPage';
 import DashboardPage from '../components/Dashboard/DashboardPage';
+import LoginPage from '../components/Auth/LoginPage';
 
 type CurrentPage = 'menu' | 'estoque' | 'vendas' | 'afiliados' | 'fornecedores' | 'dashboard';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('menu');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const authStatus = localStorage.getItem('isAuthenticated');
+    setIsAuthenticated(authStatus === 'true');
+  }, []);
+
+  const handleLogin = (success: boolean) => {
+    setIsAuthenticated(success);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    setIsAuthenticated(false);
+    setCurrentPage('menu');
+  };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   if (currentPage === 'estoque') {
     return <EstoquePage onBack={() => setCurrentPage('menu')} />;
@@ -38,7 +59,7 @@ const Index = () => {
       {/* Header Principal */}
       <header className="bg-vertttraue-primary text-white p-6 shadow-lg">
         <div className="container mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-2" style={{ fontFamily: 'Tenor Sans' }}>vertttraue</h1>
+          <h1 className="text-4xl font-normal mb-2" style={{ fontFamily: 'Tenor Sans' }}>vertttraue</h1>
           <p className="text-xl opacity-90">Sistema de Gestão de Estoque</p>
         </div>
       </header>
@@ -84,7 +105,10 @@ const Index = () => {
 
         {/* Botão Sair */}
         <div className="flex justify-center mt-8">
-          <button className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-300 shadow-lg">
+          <button 
+            onClick={handleLogout}
+            className="bg-vertttraue-primary hover:bg-vertttraue-primary/80 text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-300 shadow-lg"
+          >
             Sair
           </button>
         </div>

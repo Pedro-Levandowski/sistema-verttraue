@@ -6,22 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Product, Conjunto } from '../../types';
+import { Product, Kit } from '../../types';
 
-interface ConjuntoModalProps {
+interface KitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (conjunto: any) => void;
+  onSave: (kit: any) => void;
   products: Product[];
-  conjunto?: Conjunto | null;
+  kit?: Kit | null;
 }
 
-const ConjuntoModal: React.FC<ConjuntoModalProps> = ({ 
+const KitModal: React.FC<KitModalProps> = ({ 
   isOpen, 
   onClose, 
   onSave, 
   products, 
-  conjunto 
+  kit 
 }) => {
   const [formData, setFormData] = useState({
     id: '',
@@ -35,13 +35,13 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
   const [quantidade, setQuantidade] = useState('');
 
   useEffect(() => {
-    if (conjunto) {
+    if (kit) {
       setFormData({
-        id: conjunto.id,
-        nome: conjunto.nome,
-        descricao: conjunto.descricao,
-        preco: conjunto.preco.toString(),
-        produtos: conjunto.produtos
+        id: kit.id,
+        nome: kit.nome,
+        descricao: kit.descricao,
+        preco: kit.preco.toString(),
+        produtos: kit.produtos
       });
     } else {
       setFormData({
@@ -52,7 +52,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
         produtos: []
       });
     }
-  }, [conjunto, isOpen]);
+  }, [kit, isOpen]);
 
   const addProduct = () => {
     if (selectedProductId && quantidade) {
@@ -82,47 +82,47 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
   const calculateEstoque = () => {
     if (formData.produtos.length === 0) return 0;
     
-    return Math.min(...formData.produtos.map(cp => {
-      const produto = products.find(p => p.id === cp.produto_id);
+    return Math.min(...formData.produtos.map(kp => {
+      const produto = products.find(p => p.id === kp.produto_id);
       const estoquesite = produto ? produto.estoque_site : 0;
-      return Math.floor(estoquesite / cp.quantidade);
+      return Math.floor(estoquesite / kp.quantidade);
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const conjuntoData = {
-      id: formData.id || `CONJ${Date.now()}`,
+    const kitData = {
+      id: formData.id || `KIT${Date.now()}`,
       nome: formData.nome,
       descricao: formData.descricao,
       preco: parseFloat(formData.preco),
       produtos: formData.produtos,
       estoque_disponivel: calculateEstoque()
     };
-    onSave(conjuntoData);
+    onSave(kitData);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{conjunto ? 'Editar Conjunto' : 'Criar Conjunto'}</DialogTitle>
+          <DialogTitle>{kit ? 'Editar Kit' : 'Criar Kit'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="id">ID do Conjunto *</Label>
+            <Label htmlFor="id">ID do Kit *</Label>
             <Input
               id="id"
               value={formData.id}
               onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-              placeholder="Ex: CONJ001"
+              placeholder="Ex: KIT001"
               required
             />
           </div>
 
           <div>
-            <Label htmlFor="nome">Nome do Conjunto *</Label>
+            <Label htmlFor="nome">Nome do Kit *</Label>
             <Input
               id="nome"
               value={formData.nome}
@@ -153,7 +153,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
           </div>
 
           <div className="border rounded p-4">
-            <h3 className="font-semibold mb-3">Produtos do Conjunto</h3>
+            <h3 className="font-semibold mb-3">Produtos do Kit</h3>
             
             <div className="flex gap-2 mb-4">
               <select
@@ -182,16 +182,16 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              {formData.produtos.map((cp) => {
-                const produto = products.find(p => p.id === cp.produto_id);
+              {formData.produtos.map((kp) => {
+                const produto = products.find(p => p.id === kp.produto_id);
                 return (
-                  <div key={cp.produto_id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    <span>{produto?.nome} (x{cp.quantidade})</span>
+                  <div key={kp.produto_id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    <span>{produto?.nome} (x{kp.quantidade})</span>
                     <Button
                       type="button"
                       variant="destructive"
                       size="sm"
-                      onClick={() => removeProduct(cp.produto_id)}
+                      onClick={() => removeProduct(kp.produto_id)}
                     >
                       Remover
                     </Button>
@@ -203,7 +203,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
 
           {formData.produtos.length > 0 && (
             <div className="border rounded p-4 bg-gray-50">
-              <h3 className="font-semibold mb-2">Resumo do Conjunto</h3>
+              <h3 className="font-semibold mb-2">Resumo do Kit</h3>
               <div className="space-y-1 text-sm">
                 <div>Estoque Disponível: <Badge>{calculateEstoque()}</Badge> (Baseado no estoque site)</div>
                 <div>Preço: <span className="font-bold text-vertttraue-primary">R$ {parseFloat(formData.preco || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
@@ -220,7 +220,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={formData.produtos.length === 0}
             >
-              {conjunto ? 'Salvar' : 'Criar Conjunto'}
+              {kit ? 'Salvar' : 'Criar Kit'}
             </Button>
           </div>
         </form>
@@ -229,4 +229,4 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
   );
 };
 
-export default ConjuntoModal;
+export default KitModal;

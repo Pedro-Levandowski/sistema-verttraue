@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   nome: string;
@@ -5,7 +6,7 @@ export interface Product {
   estoque_fisico: number;
   estoque_site: number;
   preco: number;
-  preco_custo: number;
+  preco_compra: number;
   fornecedor: Supplier;
   afiliado_id?: string;
   afiliado_estoque?: { afiliado_id: string; quantidade: number }[];
