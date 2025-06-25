@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   nome: string;
@@ -8,6 +7,7 @@ export interface Product {
   preco: number;
   preco_custo: number;
   fornecedor: Supplier;
+  afiliado_id?: string;
   afiliado_estoque?: { afiliado_id: string; quantidade: number }[];
   fotos?: string[];
 }

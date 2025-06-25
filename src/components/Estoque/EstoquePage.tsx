@@ -32,12 +32,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     conjunto.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getAfiliadoName = (afiliadoId?: string) => {
-    if (!afiliadoId) return 'Sem afiliado';
-    const afiliado = mockAffiliates.find(a => a.id === afiliadoId);
-    return afiliado ? afiliado.nome_completo : 'Afiliado não encontrado';
-  };
-
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setShowProductModal(true);
@@ -85,9 +79,9 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               setEditingConjunto(null);
               setShowConjuntoModal(true);
             }}
-            className="bg-vertttraue-primary hover:bg-vertttraue-primary-light text-white"
+            className="bg-vertttraue-primary hover:bg-vertttraue-primary/80 text-white"
           >
-            Gerenciar Conjuntos
+            Adicionar Conjunto
           </Button>
         }
       />
@@ -105,7 +99,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               setEditingProduct(null);
               setShowProductModal(true);
             }}
-            className="bg-vertttraue-primary hover:bg-vertttraue-primary-light"
+            className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
           >
             Adicionar Produto
           </Button>
@@ -125,7 +119,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                     <th className="text-left p-2">Est. Total</th>
                     <th className="text-left p-2">Est. Físico</th>
                     <th className="text-left p-2">Est. Site</th>
-                    <th className="text-left p-2">Afiliado</th>
                     <th className="text-left p-2">Preço</th>
                     <th className="text-left p-2">Ações</th>
                   </tr>
@@ -139,21 +132,25 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                       <td className="p-2 font-semibold">{product.estoque_fisico + product.estoque_site}</td>
                       <td className="p-2">{product.estoque_fisico}</td>
                       <td className="p-2">{product.estoque_site}</td>
+                      <td className="p-2">R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td className="p-2">
-                        <span className={`text-xs px-2 py-1 rounded ${product.afiliado_id ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {getAfiliadoName(product.afiliado_id)}
-                        </span>
-                      </td>
-                      <td className="p-2">R$ {product.preco.toFixed(2)}</td>
-                      <td className="p-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEditProduct(product)}
-                          className="hover:bg-vertttraue-primary hover:text-white"
-                        >
-                          Editar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditProduct(product)}
+                            className="hover:bg-vertttraue-primary hover:text-white"
+                          >
+                            Editar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="hover:bg-vertttraue-primary hover:text-white"
+                          >
+                            Afiliados
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -185,7 +182,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                     <span className="font-semibold">{conjunto.estoque_disponivel}</span>
                   </div>
                   <div className="text-sm font-bold text-vertttraue-primary">
-                    R$ {(conjunto.preco * 0.9).toFixed(2)}
+                    R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -199,9 +196,9 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                   </Button>
                   <Button
                     size="sm"
-                    variant="destructive"
+                    variant="outline"
                     onClick={() => handleDeleteConjunto(conjunto.id)}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs hover:bg-red-500 hover:text-white"
                   >
                     Excluir
                   </Button>

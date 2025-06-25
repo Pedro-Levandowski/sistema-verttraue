@@ -30,8 +30,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     estoque_fisico: '',
     estoque_site: '',
     preco: '',
-    fornecedor_id: '',
-    afiliado_id: ''
+    preco_custo: '',
+    fornecedor_id: ''
   });
 
   useEffect(() => {
@@ -42,8 +42,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         estoque_fisico: product.estoque_fisico.toString(),
         estoque_site: product.estoque_site.toString(),
         preco: product.preco.toString(),
-        fornecedor_id: product.fornecedor.id,
-        afiliado_id: product.afiliado_id || ''
+        preco_custo: product.preco_custo.toString(),
+        fornecedor_id: product.fornecedor.id
       });
     } else {
       setFormData({
@@ -52,8 +52,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         estoque_fisico: '',
         estoque_site: '',
         preco: '',
-        fornecedor_id: '',
-        afiliado_id: ''
+        preco_custo: '',
+        fornecedor_id: ''
       });
     }
   }, [product, isOpen]);
@@ -70,8 +70,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
       estoque_fisico: parseInt(formData.estoque_fisico),
       estoque_site: parseInt(formData.estoque_site),
       preco: parseFloat(formData.preco),
+      preco_custo: parseFloat(formData.preco_custo),
       fornecedor: selectedSupplier,
-      afiliado_id: formData.afiliado_id || undefined
+      afiliado_estoque: []
     };
 
     onSave(productData);
@@ -139,16 +140,29 @@ const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="preco">Preço (R$) *</Label>
-            <Input
-              id="preco"
-              type="number"
-              step="0.01"
-              value={formData.preco}
-              onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="preco">Preço (R$) *</Label>
+              <Input
+                id="preco"
+                type="number"
+                step="0.01"
+                value={formData.preco}
+                onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="preco_custo">Preço Custo (R$) *</Label>
+              <Input
+                id="preco_custo"
+                type="number"
+                step="0.01"
+                value={formData.preco_custo}
+                onChange={(e) => setFormData({ ...formData, preco_custo: e.target.value })}
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -164,23 +178,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
               {suppliers.map(supplier => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.nome} - {supplier.cidade}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <Label htmlFor="afiliado_id">Afiliado (opcional)</Label>
-            <select
-              id="afiliado_id"
-              value={formData.afiliado_id}
-              onChange={(e) => setFormData({ ...formData, afiliado_id: e.target.value })}
-              className="w-full rounded border p-2"
-            >
-              <option value="">Sem afiliado</option>
-              {affiliates.filter(a => a.ativo).map(affiliate => (
-                <option key={affiliate.id} value={affiliate.id}>
-                  {affiliate.nome_completo}
                 </option>
               ))}
             </select>
