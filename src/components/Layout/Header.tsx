@@ -1,45 +1,33 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
-  onBack?: () => void;
+  onBack: () => void;
   actions?: React.ReactNode;
 }
 
 const Header: React.FC<HeaderProps> = ({ title, onBack, actions }) => {
   return (
-    <header className="bg-vertttraue-primary text-white p-4 shadow-lg">
-      <div className="container mx-auto flex items-center justify-between">
+    <div className="bg-white shadow-sm border-b">
+      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {onBack && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="text-white hover:bg-vertttraue-primary-light hover:text-white"
-            >
-              ← Voltar
-            </Button>
-          )}
-          <h1 className="text-2xl font-bold">{title}</h1>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {actions}
           <Button
             variant="outline"
             size="sm"
-            className="border-white text-white bg-transparent hover:bg-white hover:text-vertttraue-primary"
+            onClick={onBack}
+            className="hover:bg-vertttraue-primary hover:text-white"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
           </Button>
+          <h1 className="text-2xl font-bold text-vertttraue-primary">{title}</h1>
         </div>
+        {actions && <div>{actions}</div>}
       </div>
-    </header>
+    </div>
   );
 };
 

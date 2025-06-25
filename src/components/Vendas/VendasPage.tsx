@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import Header from '../Layout/Header';
 import VendaModal from './VendaModal';
+import VendaDetalhesModal from './VendaDetalhesModal';
 import { mockSales, mockProducts, mockConjuntos, mockKits, mockAffiliates } from '../../data/mockData';
 import { Sale } from '../../types';
 
@@ -15,12 +16,19 @@ interface VendasPageProps {
 const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
   const [sales] = useState<Sale[]>(mockSales);
   const [showVendaModal, setShowVendaModal] = useState(false);
+  const [showVendaDetalhesModal, setShowVendaDetalhesModal] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredSales = sales.filter(sale =>
     sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.afiliado?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleShowSaleDetails = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowVendaDetalhesModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
@@ -74,7 +82,12 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
                     <td className="p-2">{sale.afiliado?.nome_completo || '-'}</td>
                     <td className="p-2 font-bold text-vertttraue-primary">R$ {sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="p-2">
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleShowSaleDetails(sale)}
+                        className="hover:bg-vertttraue-primary hover:text-white"
+                      >
                         Detalhes
                       </Button>
                     </td>
@@ -99,6 +112,15 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         conjuntos={mockConjuntos}
         kits={mockKits}
         affiliates={mockAffiliates}
+      />
+
+      <VendaDetalhesModal
+        isOpen={showVendaDetalhesModal}
+        onClose={() => setShowVendaDetalhesModal(false)}
+        sale={selectedSale}
+        products={mockProducts}
+        conjuntos={mockConjuntos}
+        kits={mockKits}
       />
     </div>
   );

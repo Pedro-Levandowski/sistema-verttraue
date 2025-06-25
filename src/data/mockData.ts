@@ -99,6 +99,17 @@ export const mockKits: Kit[] = [
       { produto_id: 'PROD002', quantidade: 2 }
     ],
     estoque_disponivel: 15
+  },
+  {
+    id: 'KIT002',
+    nome: 'Kit Completo',
+    descricao: 'Kit completo com todos os produtos',
+    preco: 120.00,
+    produtos: [
+      { produto_id: 'PROD001', quantidade: 3 },
+      { produto_id: 'PROD002', quantidade: 2 }
+    ],
+    estoque_disponivel: 10
   }
 ];
 
