@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +76,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const handleShowAfiliadoEstoque = (product: Product) => {
     setSelectedProduct(product);
     setShowAfiliadoEstoqueModal(true);
+  };
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
   const handleSaveProduct = (productData: any) => {
@@ -398,6 +401,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         isOpen={showProductInfoModal}
         onClose={() => setShowProductInfoModal(false)}
         product={selectedProduct}
+        affiliates={mockAffiliates}
+        onUpdateProduct={handleUpdateProduct}
       />
 
       <AfiliadoEstoqueModal
