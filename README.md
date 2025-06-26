@@ -1,73 +1,212 @@
-# Welcome to your Lovable project
 
-## Project info
+# Sistema de Gestão vertttraue
 
-**URL**: https://lovable.dev/projects/dd25d156-7ddc-4bff-b5d3-aeecce8a790a
+Sistema completo de gestão de estoque, vendas e afiliados com frontend React e backend Node.js + PostgreSQL.
 
-## How can I edit this code?
+## 🚀 Características
 
-There are several ways of editing your application.
+- **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui
+- **Backend**: Node.js + Express + PostgreSQL
+- **Autenticação**: JWT + bcrypt
+- **Banco de Dados**: PostgreSQL com triggers e índices otimizados
+- **Segurança**: Helmet, CORS, Rate Limiting
+- **Deploy**: Fácil instalação em VPS com scripts automatizados
 
-**Use Lovable**
+## 📋 Pré-requisitos
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/dd25d156-7ddc-4bff-b5d3-aeecce8a790a) and start prompting.
+- Node.js 16+ 
+- PostgreSQL 12+
+- npm ou yarn
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🔧 Instalação em VPS
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+### 1. Clonar o repositório
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Instalar dependências do frontend
+```bash
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 3. Instalar e configurar o backend
+```bash
+# Instalar dependências do backend
+npm install express pg cors helmet express-rate-limit bcrypt jsonwebtoken dotenv multer
+
+# Executar script de instalação (irá configurar o banco)
+chmod +x scripts/install.sh
+./scripts/install.sh
+```
+
+### 4. Iniciar os serviços
+
+**Frontend (desenvolvimento):**
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+**Backend:**
+```bash
+# Modo produção
+npm run start
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Modo desenvolvimento (com nodemon)
+npm run dev:backend
+```
 
-**Use GitHub Codespaces**
+## 🗄️ Banco de Dados
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Estrutura
+- **usuarios_admin**: Usuários administrativos
+- **fornecedores**: Fornecedores dos produtos
+- **afiliados**: Afiliados para vendas
+- **produtos**: Catálogo de produtos
+- **produto_fotos**: Fotos dos produtos
+- **afiliado_estoque**: Controle de estoque por afiliado
+- **conjuntos**: Agrupamento de produtos
+- **kits**: Kits especiais de produtos
+- **vendas**: Registro de vendas
+- **venda_itens**: Itens das vendas
 
-## What technologies are used for this project?
+### Backup automático
+```bash
+npm run backup
+```
 
-This project is built with:
+## 🔐 API Endpoints
 
-- Vite
+### Autenticação
+- `POST /api/auth/login` - Login
+- `GET /api/auth/verify` - Verificar token
+
+### Produtos
+- `GET /api/produtos` - Listar produtos
+- `GET /api/produtos/:id` - Buscar produto
+- `POST /api/produtos` - Criar produto
+- `PUT /api/produtos/:id` - Atualizar produto
+- `DELETE /api/produtos/:id` - Deletar produto
+
+### Outras rotas
+- Fornecedores: `/api/fornecedores`
+- Afiliados: `/api/afiliados`
+- Vendas: `/api/vendas`
+- Conjuntos: `/api/conjuntos`
+- Kits: `/api/kits`
+
+## 🌍 Deploy em Produção
+
+### Nginx (recomendado)
+```nginx
+server {
+    listen 80;
+    server_name seu-dominio.com;
+
+    # Frontend
+    location / {
+        root /caminho/para/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### PM2 (gerenciador de processos)
+```bash
+npm install -g pm2
+pm2 start server/app.js --name "vertttraue-backend"
+pm2 startup
+pm2 save
+```
+
+## 🔑 Credenciais Padrão
+
+- **Usuário**: admin
+- **Senha**: admin123
+
+*⚠️ Altere as credenciais em produção!*
+
+## 🛠️ Desenvolvimento
+
+### Frontend
+```bash
+npm run dev
+```
+Acesse: http://localhost:8080
+
+### Backend
+```bash
+npm install nodemon --save-dev
+npm run dev:backend
+```
+API: http://localhost:3001
+
+### Health Check
+```bash
+curl http://localhost:3001/health
+```
+
+## 📱 Tecnologias Utilizadas
+
+### Frontend
+- React 18
 - TypeScript
-- React
-- shadcn-ui
 - Tailwind CSS
+- shadcn/ui
+- React Router
+- Tanstack Query
+- Recharts
 
-## How can I deploy this project?
+### Backend
+- Node.js
+- Express.js
+- PostgreSQL
+- JWT Authentication
+- bcrypt
+- Helmet (segurança)
+- CORS
+- Rate Limiting
 
-Simply open [Lovable](https://lovable.dev/projects/dd25d156-7ddc-4bff-b5d3-aeecce8a790a) and click on Share -> Publish.
+## 🔒 Segurança
 
-## Can I connect a custom domain to my Lovable project?
+- Autenticação JWT
+- Senhas criptografadas com bcrypt
+- Rate limiting para prevenir ataques
+- Headers de segurança com Helmet
+- CORS configurado
+- Validação de entrada
+- SQL injection protection
 
-Yes, you can!
+## 📊 Monitoramento
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Health check endpoint: `/health`
+- Logs estruturados
+- Backup automático do banco
+- Triggers para auditoria
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch: `git checkout -b feature/nova-feature`
+3. Commit: `git commit -m 'Add nova feature'`
+4. Push: `git push origin feature/nova-feature`
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+## 📞 Suporte
+
+Para suporte, entre em contato através do sistema ou abra uma issue no repositório.
