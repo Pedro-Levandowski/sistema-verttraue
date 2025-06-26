@@ -29,17 +29,22 @@ app.use(express.urlencoded({ extended: true }));
 // Importar rotas
 const authRoutes = require('./routes/auth');
 const produtosRoutes = require('./routes/produtos');
+const fornecedoresRoutes = require('./routes/fornecedores');
+const afiliadosRoutes = require('./routes/afiliados');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/produtos', produtosRoutes);
+app.use('/api/fornecedores', fornecedoresRoutes);
+app.use('/api/afiliados', afiliadosRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    service: 'vertttraue-backend'
+    service: 'vertttraue-backend',
+    version: '1.0.0'
   });
 });
 
@@ -59,9 +64,10 @@ app.use('*', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor vertttraue rodando na porta ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+  console.log(`🗄️ Banco de dados: ${process.env.DB_NAME || 'vertttraue_db'}`);
 });
 
 module.exports = app;

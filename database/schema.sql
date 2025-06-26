@@ -6,7 +6,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Tabela de usuários administrativos
-CREATE TABLE usuarios_admin (
+CREATE TABLE IF NOT EXISTS usuarios_admin (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE usuarios_admin (
 );
 
 -- Tabela de fornecedores
-CREATE TABLE fornecedores (
+CREATE TABLE IF NOT EXISTS fornecedores (
     id VARCHAR(20) PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     cidade VARCHAR(100),
@@ -25,7 +25,7 @@ CREATE TABLE fornecedores (
 );
 
 -- Tabela de afiliados
-CREATE TABLE afiliados (
+CREATE TABLE IF NOT EXISTS afiliados (
     id VARCHAR(20) PRIMARY KEY,
     nome_completo VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE afiliados (
 );
 
 -- Tabela de produtos
-CREATE TABLE produtos (
+CREATE TABLE IF NOT EXISTS produtos (
     id VARCHAR(20) PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
@@ -54,7 +54,7 @@ CREATE TABLE produtos (
 );
 
 -- Tabela de fotos dos produtos
-CREATE TABLE produto_fotos (
+CREATE TABLE IF NOT EXISTS produto_fotos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     produto_id VARCHAR(20) REFERENCES produtos(id) ON DELETE CASCADE,
     url_foto VARCHAR(500) NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE produto_fotos (
 );
 
 -- Tabela de estoque de afiliados
-CREATE TABLE afiliado_estoque (
+CREATE TABLE IF NOT EXISTS afiliado_estoque (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     produto_id VARCHAR(20) REFERENCES produtos(id) ON DELETE CASCADE,
     afiliado_id VARCHAR(20) REFERENCES afiliados(id) ON DELETE CASCADE,
@@ -74,7 +74,7 @@ CREATE TABLE afiliado_estoque (
 );
 
 -- Tabela de conjuntos
-CREATE TABLE conjuntos (
+CREATE TABLE IF NOT EXISTS conjuntos (
     id VARCHAR(20) PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
@@ -84,7 +84,7 @@ CREATE TABLE conjuntos (
 );
 
 -- Tabela de produtos dos conjuntos
-CREATE TABLE conjunto_produtos (
+CREATE TABLE IF NOT EXISTS conjunto_produtos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     conjunto_id VARCHAR(20) REFERENCES conjuntos(id) ON DELETE CASCADE,
     produto_id VARCHAR(20) REFERENCES produtos(id) ON DELETE CASCADE,
@@ -93,7 +93,7 @@ CREATE TABLE conjunto_produtos (
 );
 
 -- Tabela de kits
-CREATE TABLE kits (
+CREATE TABLE IF NOT EXISTS kits (
     id VARCHAR(20) PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
@@ -103,7 +103,7 @@ CREATE TABLE kits (
 );
 
 -- Tabela de produtos dos kits
-CREATE TABLE kit_produtos (
+CREATE TABLE IF NOT EXISTS kit_produtos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     kit_id VARCHAR(20) REFERENCES kits(id) ON DELETE CASCADE,
     produto_id VARCHAR(20) REFERENCES produtos(id) ON DELETE CASCADE,
@@ -112,7 +112,7 @@ CREATE TABLE kit_produtos (
 );
 
 -- Tabela de vendas
-CREATE TABLE vendas (
+CREATE TABLE IF NOT EXISTS vendas (
     id VARCHAR(20) PRIMARY KEY,
     data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     afiliado_id VARCHAR(20) REFERENCES afiliados(id),
@@ -123,7 +123,7 @@ CREATE TABLE vendas (
 );
 
 -- Tabela de itens da venda
-CREATE TABLE venda_itens (
+CREATE TABLE IF NOT EXISTS venda_itens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     venda_id VARCHAR(20) REFERENCES vendas(id) ON DELETE CASCADE,
     produto_id VARCHAR(20) REFERENCES produtos(id),
@@ -139,13 +139,13 @@ CREATE TABLE venda_itens (
 );
 
 -- Índices para melhor performance
-CREATE INDEX idx_produtos_fornecedor ON produtos(fornecedor_id);
-CREATE INDEX idx_produtos_afiliado ON produtos(afiliado_id);
-CREATE INDEX idx_vendas_data ON vendas(data_venda);
-CREATE INDEX idx_vendas_afiliado ON vendas(afiliado_id);
-CREATE INDEX idx_venda_itens_venda ON venda_itens(venda_id);
-CREATE INDEX idx_afiliado_estoque_produto ON afiliado_estoque(produto_id);
-CREATE INDEX idx_afiliado_estoque_afiliado ON afiliado_estoque(afiliado_id);
+CREATE INDEX IF NOT EXISTS idx_produtos_fornecedor ON produtos(fornecedor_id);
+CREATE INDEX IF NOT EXISTS idx_produtos_afiliado ON produtos(afiliado_id);
+CREATE INDEX IF NOT EXISTS idx_vendas_data ON vendas(data_venda);
+CREATE INDEX IF NOT EXISTS idx_vendas_afiliado ON vendas(afiliado_id);
+CREATE INDEX IF NOT EXISTS idx_venda_itens_venda ON venda_itens(venda_id);
+CREATE INDEX IF NOT EXISTS idx_afiliado_estoque_produto ON afiliado_estoque(produto_id);
+CREATE INDEX IF NOT EXISTS idx_afiliado_estoque_afiliado ON afiliado_estoque(afiliado_id);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -156,18 +156,45 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers para atualizar updated_at
-CREATE TRIGGER update_usuarios_admin_updated_at BEFORE UPDATE ON usuarios_admin FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_fornecedores_updated_at BEFORE UPDATE ON fornecedores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_afiliados_updated_at BEFORE UPDATE ON afiliados FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_produtos_updated_at BEFORE UPDATE ON produtos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_afiliado_estoque_updated_at BEFORE UPDATE ON afiliado_estoque FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_conjuntos_updated_at BEFORE UPDATE ON conjuntos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_kits_updated_at BEFORE UPDATE ON kits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_vendas_updated_at BEFORE UPDATE ON vendas FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Criar triggers apenas se não existirem
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_usuarios_admin_updated_at') THEN
+        CREATE TRIGGER update_usuarios_admin_updated_at BEFORE UPDATE ON usuarios_admin FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_fornecedores_updated_at') THEN
+        CREATE TRIGGER update_fornecedores_updated_at BEFORE UPDATE ON fornecedores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_afiliados_updated_at') THEN
+        CREATE TRIGGER update_afiliados_updated_at BEFORE UPDATE ON afiliados FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_produtos_updated_at') THEN
+        CREATE TRIGGER update_produtos_updated_at BEFORE UPDATE ON produtos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_afiliado_estoque_updated_at') THEN
+        CREATE TRIGGER update_afiliado_estoque_updated_at BEFORE UPDATE ON afiliado_estoque FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_conjuntos_updated_at') THEN
+        CREATE TRIGGER update_conjuntos_updated_at BEFORE UPDATE ON conjuntos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_kits_updated_at') THEN
+        CREATE TRIGGER update_kits_updated_at BEFORE UPDATE ON kits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_vendas_updated_at') THEN
+        CREATE TRIGGER update_vendas_updated_at BEFORE UPDATE ON vendas FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END$$;
 
--- Inserir usuário admin padrão (senha: admin123)
+-- Inserir usuário admin padrão apenas se não existir (senha: admin123)
 INSERT INTO usuarios_admin (username, password_hash) 
-VALUES ('admin', '$2b$10$9Xqz3QJ8VsKzHJ9XqZ3Q8u7YzJxK1QJ8VsKzHJ9XqZ3Q8u7YzJxK1Q');
+SELECT 'admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'
+WHERE NOT EXISTS (SELECT 1 FROM usuarios_admin WHERE username = 'admin');
 
-COMMENT ON DATABASE CURRENT_DATABASE() IS 'Sistema de Gestão vertttraue - Database';
+COMMENT ON DATABASE CURRENT_DATABASE() IS 'Sistema de Gestão vertttraue - Database v1.0';

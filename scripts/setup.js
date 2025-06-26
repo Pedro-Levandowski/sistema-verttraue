@@ -27,6 +27,7 @@ async function setup() {
           console.log('Windows/Mac: https://www.postgresql.org/download/');
           reject(error);
         } else {
+          console.log('✅ PostgreSQL encontrado');
           resolve();
         }
       });
@@ -36,6 +37,8 @@ async function setup() {
     const dbname = await question('Digite o nome do banco de dados (padrão: vertttraue_db): ') || 'vertttraue_db';
     const dbuser = await question('Digite o usuário do PostgreSQL (padrão: postgres): ') || 'postgres';
     const dbpass = await question('Digite a senha do PostgreSQL: ');
+    const dbhost = await question('Digite o host do PostgreSQL (padrão: localhost): ') || 'localhost';
+    const dbport = await question('Digite a porta do PostgreSQL (padrão: 5432): ') || '5432';
 
     console.log('\n📦 Instalando dependências do backend...');
     
@@ -46,17 +49,19 @@ async function setup() {
           console.error('Erro ao instalar dependências:', error);
           reject(error);
         } else {
-          console.log('✅ Dependências instaladas com sucesso');
+          console.log('✅ Dependências do backend instaladas');
           resolve();
         }
       });
     });
 
-    // Crear banco de dados
+    // Criar banco de dados
     console.log('\n🗄️ Criando banco de dados...');
     await new Promise((resolve, reject) => {
-      exec(`createdb -h localhost -U ${dbuser} ${dbname}`, { env: { ...process.env, PGPASSWORD: dbpass } }, (error) => {
-        if (error && !error.message.includes('already exists')) {
+      exec(`createdb -h ${dbhost} -p ${dbport} -U ${dbuser} ${dbname}`, { 
+        env: { ...process.env, PGPASSWORD: dbpass } 
+      }, (error, stdout, stderr) => {
+        if (error && !stderr.includes('already exists')) {
           console.error('Erro ao criar banco:', error);
           reject(error);
         } else {
@@ -69,7 +74,9 @@ async function setup() {
     // Executar schema
     console.log('📋 Executando schema do banco...');
     await new Promise((resolve, reject) => {
-      exec(`psql -h localhost -U ${dbuser} -d ${dbname} -f database/schema.sql`, { env: { ...process.env, PGPASSWORD: dbpass } }, (error) => {
+      exec(`psql -h ${dbhost} -p ${dbport} -U ${dbuser} -d ${dbname} -f database/schema.sql`, { 
+        env: { ...process.env, PGPASSWORD: dbpass } 
+      }, (error, stdout, stderr) => {
         if (error) {
           console.error('Erro ao executar schema:', error);
           reject(error);
@@ -80,11 +87,30 @@ async function setup() {
       });
     });
 
-    // Criar arquivo .env
+    // Perguntar se quer dados de exemplo
+    const seedData = await question('\nDeseja inserir dados de exemplo? (s/N): ');
+    if (seedData.toLowerCase() === 's') {
+      console.log('📊 Inserindo dados de exemplo...');
+      await new Promise((resolve, reject) => {
+        exec(`psql -h ${dbhost} -p ${dbport} -U ${dbuser} -d ${dbname} -f database/seeds.sql`, { 
+          env: { ...process.env, PGPASSWORD: dbpass } 
+        }, (error, stdout, stderr) => {
+          if (error) {
+            console.error('Erro ao inserir dados de exemplo:', error);
+            reject(error);
+          } else {
+            console.log('✅ Dados de exemplo inseridos');
+            resolve();
+          }
+        });
+      });
+    }
+
+    // Criar arquivo .env no backend
     console.log('📝 Criando arquivo de configuração...');
     const envContent = `# Configuração do Banco de Dados PostgreSQL
-DB_HOST=localhost
-DB_PORT=5432
+DB_HOST=${dbhost}
+DB_PORT=${dbport}
 DB_NAME=${dbname}
 DB_USER=${dbuser}
 DB_PASSWORD=${dbpass}
@@ -94,7 +120,7 @@ PORT=3001
 NODE_ENV=development
 
 # JWT Secret (mude para uma chave segura em produção)
-JWT_SECRET=vertttraue_secret_key_2024_change_this_in_production
+JWT_SECRET=vertttraue_secret_key_2024_${Math.random().toString(36).substring(7)}
 
 # Frontend URL para CORS
 FRONTEND_URL=http://localhost:8080
@@ -104,7 +130,7 @@ UPLOAD_PATH=./uploads
 MAX_FILE_SIZE=5242880
 `;
 
-    fs.writeFileSync('.env', envContent);
+    fs.writeFileSync('backend/.env', envContent);
     
     // Criar diretório de uploads
     if (!fs.existsSync('backend/uploads')) {
@@ -113,13 +139,17 @@ MAX_FILE_SIZE=5242880
 
     console.log('\n✅ Configuração concluída com sucesso!');
     console.log('\n🚀 Para iniciar o sistema:');
-    console.log('Frontend: npm run dev');
-    console.log('Backend: cd backend && npm run dev');
+    console.log('   node start.js (inicia frontend e backend)');
+    console.log('   OU separadamente:');
+    console.log('   Frontend: npm run dev');
+    console.log('   Backend: cd backend && npm run dev');
     console.log('\n📊 Health check: http://localhost:3001/health');
     console.log('🔑 Credenciais padrão: admin / admin123');
+    console.log('🌐 Frontend: http://localhost:8080');
 
   } catch (error) {
     console.error('❌ Erro durante a configuração:', error);
+    process.exit(1);
   } finally {
     rl.close();
   }
