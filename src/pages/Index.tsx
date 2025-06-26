@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Package, Users, Building2, BarChart3 } from 'lucide-react';
 import MenuCard from '../components/Layout/MenuCard';
 import EstoquePage from '../components/Estoque/EstoquePage';
@@ -8,30 +7,21 @@ import AfiliadosPage from '../components/Afiliados/AfiliadosPage';
 import FornecedoresPage from '../components/Fornecedores/FornecedoresPage';
 import DashboardPage from '../components/Dashboard/DashboardPage';
 import LoginPage from '../components/Auth/LoginPage';
+import { useAuth } from '../contexts/AuthContext';
 
 type CurrentPage = 'menu' | 'estoque' | 'vendas' | 'afiliados' | 'fornecedores' | 'dashboard';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('menu');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const authStatus = localStorage.getItem('isAuthenticated');
-    setIsAuthenticated(authStatus === 'true');
-  }, []);
-
-  const handleLogin = (success: boolean) => {
-    setIsAuthenticated(success);
-  };
+  const { isAuthenticated, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    setIsAuthenticated(false);
+    logout();
     setCurrentPage('menu');
   };
 
   if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage />;
   }
 
   if (currentPage === 'estoque') {

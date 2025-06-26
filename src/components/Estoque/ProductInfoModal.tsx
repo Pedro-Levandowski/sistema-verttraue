@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, X, Edit, Save, Cancel } from 'lucide-react';
+import { Upload, X, Edit, Save } from 'lucide-react';
 import { Product, Affiliate } from '../../types';
 
 interface ProductInfoModalProps {
@@ -108,7 +107,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                   Salvar
                 </Button>
                 <Button onClick={handleCancel} variant="outline" size="sm">
-                  <Cancel className="w-4 h-4 mr-2" />
+                  <X className="w-4 h-4 mr-2" />
                   Cancelar
                 </Button>
               </>
