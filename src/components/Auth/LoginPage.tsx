@@ -6,16 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { authAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface LoginPageProps {
-  onLogin: (token: string) => void;
-}
-
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@vertttraue.com');
   const [password, setPassword] = useState('123456');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,9 +22,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
     try {
       const response = await authAPI.login(email, password);
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userName', response.user.nome);
-      onLogin(response.token);
+      login(response.token, response.user.nome || response.user.username);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
     } finally {
