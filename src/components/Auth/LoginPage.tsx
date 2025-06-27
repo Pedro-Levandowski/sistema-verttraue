@@ -21,10 +21,13 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      // A API espera 'username' não 'email' baseado no backend
+      console.log('🔐 Tentando fazer login com:', { email });
       const response = await authAPI.login(email, password);
+      console.log('✅ Login bem-sucedido:', response);
+      
       login(response.token, response.user.nome || response.user.username);
     } catch (err) {
+      console.error('❌ Erro no login:', err);
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
     } finally {
       setLoading(false);
@@ -51,13 +54,13 @@ const LoginPage: React.FC = () => {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
+              <Label htmlFor="email">E-mail/Username</Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="admin@vertttraue.com"
                 required
               />
             </div>
@@ -69,7 +72,7 @@ const LoginPage: React.FC = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Sua senha"
+                placeholder="123456"
                 required
               />
             </div>
@@ -83,10 +86,19 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
           
-          <div className="mt-4 text-center text-sm text-gray-600">
-            <p>Credenciais padrão:</p>
-            <p>E-mail: admin@vertttraue.com</p>
-            <p>Senha: 123456</p>
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-semibold text-blue-800 mb-2">📋 Instruções de Acesso:</h3>
+            <div className="text-sm text-blue-700 space-y-1">
+              <p><strong>1. Backend deve estar rodando:</strong></p>
+              <code className="block bg-blue-100 p-1 rounded text-xs">cd backend && npm run dev</code>
+              
+              <p className="mt-2"><strong>2. Credenciais padrão:</strong></p>
+              <p>E-mail: <code>admin@vertttraue.com</code></p>
+              <p>Senha: <code>123456</code></p>
+              
+              <p className="mt-2"><strong>3. Se não funcionar:</strong></p>
+              <p className="text-xs">Verifique se o usuário admin existe no banco de dados PostgreSQL</p>
+            </div>
           </div>
         </CardContent>
       </Card>

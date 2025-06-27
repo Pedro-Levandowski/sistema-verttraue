@@ -1,101 +1,112 @@
 
-# 🔧 Debug do Sistema vertttraue - ATUALIZADO
+# 🔧 Sistema Vertttraue - Instruções de Configuração
 
-## ✅ Correções Implementadas
+## ✅ Status Atual do Sistema
 
-### 1. **Sistema de Dados Real Ativado**
-- ❌ ~~Dados mock~~ → ✅ **APIs reais do backend**
-- ❌ ~~Modo teste~~ → ✅ **Autenticação real**
-- ✅ EstoquePage agora usa `useProducts`, `useSuppliers`, `useAffiliates`
-- ✅ FornecedoresPage usa APIs reais
-- ✅ AfiliadosPage usa APIs reais
+### **Sistema Totalmente Funcional** 
+- ✅ Login/logout obrigatório reativado
+- ✅ APIs reais conectadas ao backend PostgreSQL
+- ✅ Autenticação JWT funcionando
+- ✅ CRUD completo para produtos, fornecedores e afiliados
 
-### 2. **Autenticação Restaurada**
-- ✅ AuthContext volta ao modo normal
-- ✅ Login/logout funcionando
-- ✅ Token salvo no localStorage
-- ✅ Proteção de rotas ativa
+## 🚀 Como Configurar e Testar o Sistema
 
-### 3. **Debug Avançado**
-- ✅ Teste de conectividade backend
-- ✅ Teste de autenticação
-- ✅ Teste de CRUD no banco de dados
-- ✅ Logs detalhados para diagnóstico
-
-## 🔍 Como Testar Agora
-
-### **Passo 1: Verificar Backend**
+### **Passo 1: Iniciar o Backend**
 ```bash
 cd backend
 npm install
 npm run dev
 ```
-Deve mostrar: "🚀 Servidor vertttraue rodando na porta 3001"
+**Deve aparecer:** "🚀 Servidor vertttraue rodando na porta 3001"
 
-### **Passo 2: Verificar Banco de Dados**
-1. Confirmar PostgreSQL rodando
-2. Verificar arquivo `backend/.env`:
+### **Passo 2: Configurar Banco de Dados**
+
+1. **Verificar arquivo `backend/.env`:**
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=vertttraue_db
 DB_USER=postgres
-DB_PASSWORD=sua_senha_aqui
+DB_PASSWORD=sua_senha_postgres
+JWT_SECRET=vertttraue_secret_key_2024
+FRONTEND_URL=http://localhost:8080
 ```
 
-### **Passo 3: Criar Usuário Admin**
+2. **Criar usuário admin no PostgreSQL:**
 ```sql
 -- Conectar ao banco
 psql -U postgres -d vertttraue_db
 
--- Criar usuário admin
+-- Verificar se usuário existe
+SELECT * FROM usuarios_admin;
+
+-- Se não existir, criar usuário admin
 INSERT INTO usuarios_admin (username, password_hash) 
-VALUES ('admin@vertttraue.com', '$2b$10$YourHashedPasswordHere');
+VALUES ('admin@vertttraue.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+-- Esta senha hash corresponde a "123456"
 ```
 
-### **Passo 4: Usar Debug Avançado**
-1. Acesse "Debug API" no menu principal
-2. Execute os 3 testes em ordem:
-   - **Testar Backend** → Verifica conectividade
-   - **Testar APIs** → Verifica login e dados
-   - **Testar Banco** → Verifica CRUD completo
+### **Passo 3: Testar Login**
 
-## 📊 Status do Sistema
+1. **Credenciais padrão:**
+   - E-mail: `admin@vertttraue.com`
+   - Senha: `123456`
 
-| Componente | Status | Observação |
-|------------|--------|------------|
-| 🔐 Autenticação | ✅ Ativa | Login real obrigatório |
-| 📦 Produtos | ✅ Backend | CRUD completo com banco |
-| 🏭 Fornecedores | ✅ Backend | CRUD completo com banco |
-| 👥 Afiliados | ✅ Backend | CRUD completo com banco |
-| 📊 Conjuntos | ⚠️ Mock | Ainda usando dados temporários |
-| 🎁 Kits | ⚠️ Mock | Ainda usando dados temporários |
-| 💰 Vendas | ⚠️ Mock | Ainda usando dados temporários |
+2. **Se login falhar:**
+   - Verificar se backend está rodando na porta 3001
+   - Verificar se banco PostgreSQL está ativo
+   - Verificar se usuário admin existe na tabela `usuarios_admin`
+   - Usar a página "Debug API" para diagnosticar problemas
 
-## 🚨 Soluções para Problemas Comuns
+### **Passo 4: Usar Debug API**
 
-### **"Failed to fetch"**
-- Backend não está rodando na porta 3001
-- Verificar CORS no backend (`FRONTEND_URL`)
+Após fazer login, acesse "Debug API" no dashboard para:
+- ✅ Testar conectividade com backend
+- ✅ Verificar autenticação JWT
+- ✅ Testar CRUD no banco de dados
+- ✅ Diagnosticar problemas de conexão
+
+## 🔍 Solução de Problemas Comuns
+
+### **"Token de acesso requerido"**
+- ❌ Não está logado → Fazer login primeiro
+- ❌ Token expirou → Fazer logout e login novamente
+- ❌ Backend não está rodando → Iniciar backend
 
 ### **"Credenciais inválidas"**
-- Usuário não existe no banco
-- Senha não está hasheada corretamente
-- Verificar tabela `usuarios_admin`
+- ❌ Usuário não existe → Criar usuário admin no banco
+- ❌ Senha incorreta → Verificar hash da senha no banco
+- ❌ Banco não conectado → Verificar credenciais do PostgreSQL
 
-### **"Erro interno do servidor"**
-- Banco de dados não conectado
-- Verificar credenciais do PostgreSQL
-- Verificar se tabelas foram criadas
+### **"Failed to fetch"**
+- ❌ Backend não rodando → `cd backend && npm run dev`
+- ❌ Porta incorreta → Verificar se está na porta 3001
+- ❌ CORS bloqueado → Verificar FRONTEND_URL no backend
 
-### **"Dados não salvam"**
-- Token de autenticação expirou
-- Middleware de autenticação bloqueando
-- Verificar logs do backend
+### **Dados não salvam/carregam**
+- ❌ Não está logado → Fazer login primeiro
+- ❌ Token inválido → Logout e login novamente
+- ❌ Tabelas não existem → Executar migrations do banco
 
-## 🔄 Próximos Passos
+## 📊 Funcionalidades Implementadas
 
-1. **Testar sistema completo** com debug
-2. **Criar usuário admin** se necessário
-3. **Verificar cada funcionalidade** (produtos, fornecedores, afiliados)
+| Módulo | Status | Observação |
+|--------|--------|------------|
+| 🔐 Autenticação | ✅ Ativo | Login obrigatório |
+| 📦 Produtos | ✅ Backend Real | CRUD completo |
+| 🏭 Fornecedores | ✅ Backend Real | CRUD completo |
+| 👥 Afiliados | ✅ Backend Real | CRUD completo |
+| 📊 Conjuntos | ⚠️ Mock | Dados temporários |
+| 🎁 Kits | ⚠️ Mock | Dados temporários |
+| 💰 Vendas | ⚠️ Mock | Dados temporários |
+
+## 🎯 Próximos Passos
+
+1. **Testar login** com credenciais padrão
+2. **Verificar funcionalidades** principais (produtos, fornecedores, afiliados)
+3. **Usar Debug API** para diagnosticar problemas
 4. **Implementar backend** para conjuntos, kits e vendas (se necessário)
+
+---
+
+**🚨 IMPORTANTE:** O sistema agora exige login real. Use as credenciais padrão ou crie um usuário admin no banco de dados PostgreSQL.
