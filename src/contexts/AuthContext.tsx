@@ -24,20 +24,19 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
+  // MODO TEMPORÁRIO: Sempre logado para testes
+  const [token, setToken] = useState<string | null>('temporary-token');
+  const [userName, setUserName] = useState<string | null>('Admin Teste');
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('authToken');
-    const savedUserName = localStorage.getItem('userName');
-    
-    if (savedToken) {
-      setToken(savedToken);
-      setUserName(savedUserName);
-    }
+    // TEMPORÁRIO: Sempre definir como logado
+    console.log('🔧 MODO TESTE: Usuário automaticamente logado');
+    setToken('temporary-token');
+    setUserName('Admin Teste');
   }, []);
 
   const login = (newToken: string, newUserName: string) => {
+    console.log('Login executado com:', { newToken, newUserName });
     setToken(newToken);
     setUserName(newUserName);
     localStorage.setItem('authToken', newToken);
@@ -54,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = {
     token,
     userName,
-    isAuthenticated: !!token,
+    isAuthenticated: true, // TEMPORÁRIO: Sempre true para testes
     login,
     logout,
   };
