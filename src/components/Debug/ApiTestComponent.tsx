@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { authAPI } from '../../services/api';
+import { authAPI, productsAPI, suppliersAPI, affiliatesAPI } from '../../services/api';
 
 const ApiTestComponent: React.FC = () => {
   const [email, setEmail] = useState('admin@vertttraue.com');
@@ -28,10 +28,27 @@ const ApiTestComponent: React.FC = () => {
       const loginResponse = await authAPI.login(email, password);
       console.log('✅ Login response:', loginResponse);
 
-      setTestResult(`✅ Sucesso!\nHealth: ${JSON.stringify(healthData, null, 2)}\nLogin: ${JSON.stringify(loginResponse, null, 2)}`);
+      // Se login deu certo, testar APIs com autenticação
+      if (loginResponse.token) {
+        localStorage.setItem('authToken', loginResponse.token);
+        
+        console.log('🔍 Testando API de produtos...');
+        const produtos = await productsAPI.getAll();
+        console.log('✅ Produtos:', produtos);
+
+        console.log('🔍 Testando API de fornecedores...');
+        const fornecedores = await suppliersAPI.getAll();
+        console.log('✅ Fornecedores:', fornecedores);
+
+        console.log('🔍 Testando API de afiliados...');
+        const afiliados = await affiliatesAPI.getAll();
+        console.log('✅ Afiliados:', afiliados);
+
+        setTestResult(`✅ Sucesso completo!\n\nHealth: ${JSON.stringify(healthData, null, 2)}\n\nLogin: ${JSON.stringify(loginResponse, null, 2)}\n\nProdutos: ${produtos.length} encontrados\nFornecedores: ${fornecedores.length} encontrados\nAfiliados: ${afiliados.length} encontrados`);
+      }
     } catch (error) {
       console.error('❌ Erro no teste:', error);
-      setTestResult(`❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      setTestResult(`❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}\n\nDetalhes: ${JSON.stringify(error, null, 2)}`);
     } finally {
       setLoading(false);
     }
@@ -56,10 +73,56 @@ const ApiTestComponent: React.FC = () => {
     }
   };
 
+  const testDatabase = async () => {
+    setLoading(true);
+    setTestResult('');
+
+    try {
+      // Primeiro tentar fazer login para obter token
+      console.log('🔍 Fazendo login para testar banco...');
+      const loginResponse = await authAPI.login(email, password);
+      
+      if (loginResponse.token) {
+        localStorage.setItem('authToken', loginResponse.token);
+        
+        // Testar criação de um produto de teste
+        console.log('🔍 Testando criação no banco...');
+        const testProduct = {
+          id: `TEST-${Date.now()}`,
+          nome: 'Produto Teste API',
+          descricao: 'Produto criado para testar conexão com banco',
+          estoque_fisico: 0,
+          estoque_site: 10,
+          preco: 99.99,
+          preco_compra: 50.00,
+          fornecedor_id: 'FORN-TEST'
+        };
+
+        const createdProduct = await productsAPI.create(testProduct);
+        console.log('✅ Produto criado:', createdProduct);
+
+        // Buscar o produto criado
+        const foundProduct = await productsAPI.getById(testProduct.id);
+        console.log('✅ Produto encontrado:', foundProduct);
+
+        // Deletar o produto de teste
+        await productsAPI.delete(testProduct.id);
+        console.log('✅ Produto de teste removido');
+
+        setTestResult(`✅ Teste de banco de dados bem-sucedido!\n\nProduto criado: ${JSON.stringify(createdProduct, null, 2)}\n\nProduto encontrado: ${JSON.stringify(foundProduct, null, 2)}\n\n✅ Produto de teste removido com sucesso`);
+      }
+    } catch (error) {
+      console.error('❌ Erro no teste de banco:', error);
+      setTestResult(`❌ Erro no teste de banco: ${error instanceof Error ? error.message : 'Erro desconhecido'}\n\nDetalhes: ${JSON.stringify(error, null, 2)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Card className="w-full max-w-2xl mx-auto mt-4">
+    <Card className="w-full max-w-4xl mx-auto mt-4">
       <CardHeader>
-        <CardTitle className="text-xl">🔧 Teste de Conexão API</CardTitle>
+        <CardTitle className="text-xl">🔧 Debug Completo do Sistema</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -82,38 +145,55 @@ const ApiTestComponent: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button 
             onClick={testBackendOnly}
             disabled={loading}
             variant="outline"
           >
-            {loading ? 'Testando...' : 'Testar Backend'}
+            {loading ? 'Testando...' : '1. Testar Backend'}
           </Button>
           <Button 
             onClick={testConnection}
             disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700"
           >
-            {loading ? 'Testando...' : 'Testar Login Completo'}
+            {loading ? 'Testando...' : '2. Testar APIs'}
+          </Button>
+          <Button 
+            onClick={testDatabase}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {loading ? 'Testando...' : '3. Testar Banco'}
           </Button>
         </div>
 
         {testResult && (
           <Alert>
             <AlertDescription>
-              <pre className="whitespace-pre-wrap text-xs">{testResult}</pre>
+              <pre className="whitespace-pre-wrap text-xs max-h-96 overflow-y-auto">{testResult}</pre>
             </AlertDescription>
           </Alert>
         )}
 
         <div className="text-sm text-gray-600 space-y-2">
-          <p><strong>Instruções:</strong></p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Certifique-se que o backend está rodando na porta 3001</li>
-            <li>Execute: <code className="bg-gray-100 px-1 rounded">cd backend && npm run dev</code></li>
-            <li>O health check deve retornar status "OK"</li>
-            <li>Se der erro CORS, verifique se o frontend URL está correto no backend</li>
-          </ul>
+          <p><strong>Instruções de Debug:</strong></p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li><strong>Testar Backend:</strong> Verifica se o servidor Node.js está rodando</li>
+            <li><strong>Testar APIs:</strong> Testa login e busca dados de todas as tabelas</li>
+            <li><strong>Testar Banco:</strong> Cria, busca e remove um produto de teste</li>
+          </ol>
+          
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <p><strong>⚠️ Problemas Comuns:</strong></p>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>Backend não rodando: <code className="bg-gray-100 px-1 rounded">cd backend && npm run dev</code></li>
+              <li>Banco não conectado: Verificar credenciais em <code className="bg-gray-100 px-1 rounded">backend/.env</code></li>
+              <li>Usuário não existe: Criar usuário admin no banco de dados</li>
+              <li>CORS: Verificar FRONTEND_URL no backend</li>
+            </ul>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,14 +1,19 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Header from '../Layout/Header';
 import ProductModal from './ProductModal';
 import ConjuntoModal from './ConjuntoModal';
 import KitModal from './KitModal';
 import ProductInfoModal from './ProductInfoModal';
 import AfiliadoEstoqueModal from './AfiliadoEstoqueModal';
-import { mockProducts, mockConjuntos, mockKits, mockAffiliates, mockSuppliers } from '../../data/mockData';
+import { useProducts } from '../../hooks/useProducts';
+import { useSuppliers } from '../../hooks/useSuppliers';
+import { useAffiliates } from '../../hooks/useAffiliates';
+import { mockConjuntos, mockKits } from '../../data/mockData';
 import { Product, Conjunto, Kit } from '../../types';
 
 interface EstoquePageProps {
@@ -16,9 +21,15 @@ interface EstoquePageProps {
 }
 
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  // Usar hooks reais para dados do backend
+  const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
+  const { suppliers, loading: suppliersLoading } = useSuppliers();
+  const { affiliates, loading: affiliatesLoading } = useAffiliates();
+
+  // Manter conjuntos e kits como mock por enquanto (não têm backend ainda)
   const [conjuntos, setConjuntos] = useState<Conjunto[]>(mockConjuntos);
   const [kits, setKits] = useState<Kit[]>(mockKits);
+  
   const [showProductModal, setShowProductModal] = useState(false);
   const [showConjuntoModal, setShowConjuntoModal] = useState(false);
   const [showKitModal, setShowKitModal] = useState(false);
@@ -78,18 +89,32 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowAfiliadoEstoqueModal(true);
   };
 
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    try {
+      await updateProduct(updatedProduct.id, updatedProduct);
+      console.log('✅ Produto atualizado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao atualizar produto:', error);
+    }
   };
 
-  const handleSaveProduct = (productData: any) => {
-    if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? { ...productData, id: editingProduct.id } : p));
-    } else {
-      setProducts([...products, productData]);
+  const handleSaveProduct = async (productData: any) => {
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, productData);
+        console.log('✅ Produto editado com sucesso');
+      } else {
+        // Gerar ID único para novo produto
+        const newId = `PROD-${Date.now()}`;
+        await createProduct({ ...productData, id: newId });
+        console.log('✅ Produto criado com sucesso');
+      }
+      setEditingProduct(null);
+      setShowProductModal(false);
+    } catch (error) {
+      console.error('❌ Erro ao salvar produto:', error);
+      alert('Erro ao salvar produto. Verifique o console para mais detalhes.');
     }
-    setEditingProduct(null);
-    setShowProductModal(false);
   };
 
   const handleSaveConjunto = (conjuntoData: any) => {
@@ -104,7 +129,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     if (editingConjunto) {
       setConjuntos(conjuntos.map(c => c.id === editingConjunto.id ? { ...conjuntoData, id: editingConjunto.id } : c));
     } else {
-      setConjuntos([...conjuntos, conjuntoData]);
+      const newId = `CONJ-${Date.now()}`;
+      setConjuntos([...conjuntos, { ...conjuntoData, id: newId }]);
     }
     setEditingConjunto(null);
     setShowConjuntoModal(false);
@@ -122,35 +148,32 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     if (editingKit) {
       setKits(kits.map(k => k.id === editingKit.id ? { ...kitData, id: editingKit.id } : k));
     } else {
-      setKits([...kits, kitData]);
+      const newId = `KIT-${Date.now()}`;
+      setKits([...kits, { ...kitData, id: newId }]);
     }
     setEditingKit(null);
     setShowKitModal(false);
   };
 
-  const handleAfiliadoEstoque = (productId: string, afiliadoId: string, quantidade: number) => {
-    setProducts(products.map(p => {
-      if (p.id === productId) {
-        const updatedProduct = { ...p };
-        updatedProduct.estoque_site -= quantidade;
-        updatedProduct.estoque_fisico += quantidade;
-        
-        if (!updatedProduct.afiliado_estoque) {
-          updatedProduct.afiliado_estoque = [];
-        }
-        
-        const existingIndex = updatedProduct.afiliado_estoque.findIndex(ae => ae.afiliado_id === afiliadoId);
-        if (existingIndex >= 0) {
-          updatedProduct.afiliado_estoque[existingIndex].quantidade += quantidade;
-        } else {
-          updatedProduct.afiliado_estoque.push({ afiliado_id: afiliadoId, quantidade });
-        }
-        
-        return updatedProduct;
-      }
-      return p;
-    }));
+  const handleAfiliadoEstoque = async (productId: string, afiliadoId: string, quantidade: number) => {
+    try {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      const updatedProduct = {
+        ...product,
+        estoque_site: product.estoque_site - quantidade,
+        estoque_fisico: product.estoque_fisico + quantidade
+      };
+
+      await updateProduct(productId, updatedProduct);
+      console.log('✅ Estoque de afiliado atualizado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao atualizar estoque de afiliado:', error);
+    }
   };
+
+  const loading = productsLoading || suppliersLoading || affiliatesLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
@@ -182,6 +205,22 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       />
 
       <div className="container mx-auto p-6">
+        {/* Indicador de carregamento */}
+        {loading && (
+          <Alert className="mb-4">
+            <AlertDescription>Carregando dados do banco de dados...</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Indicador de erro */}
+        {productsError && (
+          <Alert className="mb-4 border-red-200 bg-red-50">
+            <AlertDescription className="text-red-700">
+              ❌ Erro ao conectar com o backend: {productsError}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <Input
             placeholder="Buscar produtos, conjuntos ou kits..."
@@ -195,6 +234,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               setShowProductModal(true);
             }}
             className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+            disabled={loading}
           >
             Adicionar Produto
           </Button>
@@ -203,64 +243,73 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         {/* Produtos */}
         <div className="mb-8">
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">Produtos</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">ID</th>
-                    <th className="text-left p-2">Nome</th>
-                    <th className="text-left p-2">Fornecedor</th>
-                    <th className="text-left p-2">Est. Total</th>
-                    <th className="text-left p-2">Est. Físico</th>
-                    <th className="text-left p-2">Est. Site</th>
-                    <th className="text-left p-2">Preço</th>
-                    <th className="text-left p-2">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2 font-mono">{product.id}</td>
-                      <td className="p-2">{product.nome}</td>
-                      <td className="p-2">{product.fornecedor.nome}</td>
-                      <td className="p-2 font-semibold">{product.estoque_fisico + product.estoque_site}</td>
-                      <td className="p-2">{product.estoque_fisico}</td>
-                      <td className="p-2">{product.estoque_site}</td>
-                      <td className="p-2">R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-2">
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleShowProductInfo(product)}
-                            className="hover:bg-vertttraue-primary hover:text-white text-xs"
-                          >
-                            Info
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditProduct(product)}
-                            className="hover:bg-vertttraue-primary hover:text-white text-xs"
-                          >
-                            Editar
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleShowAfiliadoEstoque(product)}
-                            className="hover:bg-vertttraue-primary hover:text-white text-xs"
-                          >
-                            Afiliados
-                          </Button>
-                        </div>
-                      </td>
+            <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
+              Produtos ({products.length})
+            </h2>
+            {products.length === 0 && !loading ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Nenhum produto encontrado no banco de dados.</p>
+                <p className="text-sm">Adicione o primeiro produto clicando no botão acima.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">ID</th>
+                      <th className="text-left p-2">Nome</th>
+                      <th className="text-left p-2">Fornecedor</th>
+                      <th className="text-left p-2">Est. Total</th>
+                      <th className="text-left p-2">Est. Físico</th>
+                      <th className="text-left p-2">Est. Site</th>
+                      <th className="text-left p-2">Preço</th>
+                      <th className="text-left p-2">Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map((product) => (
+                      <tr key={product.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2 font-mono">{product.id}</td>
+                        <td className="p-2">{product.nome}</td>
+                        <td className="p-2">{product.fornecedor?.nome || 'N/A'}</td>
+                        <td className="p-2 font-semibold">{product.estoque_fisico + product.estoque_site}</td>
+                        <td className="p-2">{product.estoque_fisico}</td>
+                        <td className="p-2">{product.estoque_site}</td>
+                        <td className="p-2">R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-2">
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleShowProductInfo(product)}
+                              className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                            >
+                              Info
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditProduct(product)}
+                              className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                            >
+                              Editar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleShowAfiliadoEstoque(product)}
+                              className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                            >
+                              Afiliados
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -371,8 +420,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         onSave={handleSaveProduct}
         product={editingProduct}
-        suppliers={mockSuppliers}
-        affiliates={mockAffiliates}
+        suppliers={suppliers}
+        affiliates={affiliates}
       />
 
       <ConjuntoModal
@@ -401,7 +450,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         isOpen={showProductInfoModal}
         onClose={() => setShowProductInfoModal(false)}
         product={selectedProduct}
-        affiliates={mockAffiliates}
+        affiliates={affiliates}
         onUpdateProduct={handleUpdateProduct}
       />
 
@@ -410,7 +459,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         onClose={() => setShowAfiliadoEstoqueModal(false)}
         onSave={handleAfiliadoEstoque}
         product={selectedProduct}
-        affiliates={mockAffiliates}
+        affiliates={affiliates}
       />
     </div>
   );

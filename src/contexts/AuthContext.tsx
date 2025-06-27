@@ -24,19 +24,25 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // MODO TEMPORÁRIO: Sempre logado para testes
-  const [token, setToken] = useState<string | null>('temporary-token');
-  const [userName, setUserName] = useState<string | null>('Admin Teste');
+  const [token, setToken] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    // TEMPORÁRIO: Sempre definir como logado
-    console.log('🔧 MODO TESTE: Usuário automaticamente logado');
-    setToken('temporary-token');
-    setUserName('Admin Teste');
+    // Verificar se há token salvo no localStorage
+    const savedToken = localStorage.getItem('authToken');
+    const savedUserName = localStorage.getItem('userName');
+    
+    if (savedToken && savedUserName) {
+      console.log('✅ Token encontrado no localStorage, fazendo login automático');
+      setToken(savedToken);
+      setUserName(savedUserName);
+    } else {
+      console.log('ℹ️ Nenhum token encontrado, usuário deve fazer login');
+    }
   }, []);
 
   const login = (newToken: string, newUserName: string) => {
-    console.log('Login executado com:', { newToken, newUserName });
+    console.log('✅ Login executado com:', { newToken, newUserName });
     setToken(newToken);
     setUserName(newUserName);
     localStorage.setItem('authToken', newToken);
@@ -44,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('🚪 Logout executado');
     setToken(null);
     setUserName(null);
     localStorage.removeItem('authToken');
@@ -53,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = {
     token,
     userName,
-    isAuthenticated: true, // TEMPORÁRIO: Sempre true para testes
+    isAuthenticated: !!token,
     login,
     logout,
   };
