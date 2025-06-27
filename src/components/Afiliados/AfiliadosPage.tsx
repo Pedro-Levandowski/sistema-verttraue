@@ -207,13 +207,13 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
           setEditingAffiliate(null);
         }}
         onSave={handleSave}
-        affiliate={editingAffiliate}
+        afiliado={editingAffiliate}
       />
 
       <AfiliadoProdutosModal
         isOpen={showProdutosModal}
         onClose={() => setShowProdutosModal(false)}
-        affiliate={selectedAffiliate}
+        afiliado={selectedAffiliate}
         products={selectedAffiliate ? getAffiliateProducts(selectedAffiliate.id) : []}
       />
     </div>
