@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
+import { Package, Factory, Users, DollarSign, Settings } from 'lucide-react';
 import Header from '../Layout/Header';
 import MenuCard from '../Layout/MenuCard';
 
@@ -36,36 +37,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MenuCard
             title="Estoque"
-            description="Gerenciar produtos, conjuntos e kits"
-            icon="📦"
+            icon={Package}
+            color="#3b82f6"
             onClick={() => onNavigate('estoque')}
           />
           
           <MenuCard
             title="Fornecedores"
-            description="Cadastrar e gerenciar fornecedores"
-            icon="🏭"
+            icon={Factory}
+            color="#10b981"
             onClick={() => onNavigate('fornecedores')}
           />
           
           <MenuCard
             title="Afiliados"
-            description="Gerenciar rede de afiliados"
-            icon="👥"
+            icon={Users}
+            color="#8b5cf6"
             onClick={() => onNavigate('afiliados')}
           />
           
           <MenuCard
             title="Vendas"
-            description="Registrar e acompanhar vendas"
-            icon="💰"
+            icon={DollarSign}
+            color="#f59e0b"
             onClick={() => onNavigate('vendas')}
           />
           
           <MenuCard
             title="Debug API"
-            description="Testar conectividade e APIs"
-            icon="🔧"
+            icon={Settings}
+            color="#ef4444"
             onClick={() => onNavigate('debug')}
           />
         </div>
