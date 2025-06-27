@@ -21,6 +21,7 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
+      // A API espera 'username' não 'email' baseado no backend
       const response = await authAPI.login(email, password);
       login(response.token, response.user.nome || response.user.username);
     } catch (err) {

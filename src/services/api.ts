@@ -29,7 +29,7 @@ export const authAPI = {
   login: async (email: string, password: string) => {
     return makeRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username: email, password }),
     });
   },
   
