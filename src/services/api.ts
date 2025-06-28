@@ -78,6 +78,17 @@ export const authAPI = {
 
   resetAdmin: async () => {
     return makeRequest('/auth/reset-admin', { method: 'POST' });
+  },
+
+  createUser: async (username: string, password: string, nome?: string) => {
+    return makeRequest('/auth/create-user', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        username, 
+        password, 
+        nome 
+      }),
+    });
   }
 };
 

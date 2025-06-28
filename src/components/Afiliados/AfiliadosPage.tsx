@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import Header from '../Layout/Header';
 import AfiliadoModal from './AfiliadoModal';
 import AfiliadoProdutosModal from './AfiliadoProdutosModal';
+import AfiliadoInfoModal from './AfiliadoInfoModal';
 import { useAffiliates } from '../../hooks/useAffiliates';
 import { useProducts } from '../../hooks/useProducts';
 import { Affiliate } from '../../types';
@@ -21,6 +22,7 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
   
   const [showModal, setShowModal] = useState(false);
   const [showProdutosModal, setShowProdutosModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [editingAffiliate, setEditingAffiliate] = useState<Affiliate | null>(null);
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +53,11 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
   const handleShowProdutos = (affiliate: Affiliate) => {
     setSelectedAffiliate(affiliate);
     setShowProdutosModal(true);
+  };
+
+  const handleShowInfo = (affiliate: Affiliate) => {
+    setSelectedAffiliate(affiliate);
+    setShowInfoModal(true);
   };
 
   const handleSave = async (affiliateData: any) => {
@@ -167,6 +174,14 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => handleShowInfo(affiliate)}
+                              className="hover:bg-blue-500 hover:text-white text-xs"
+                            >
+                              Info
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleShowProdutos(affiliate)}
                               className="hover:bg-vertttraue-primary hover:text-white text-xs"
                             >
@@ -215,6 +230,13 @@ const AfiliadosPage: React.FC<AfiliadosPageProps> = ({ onBack }) => {
         onClose={() => setShowProdutosModal(false)}
         afiliado={selectedAffiliate}
         products={selectedAffiliate ? getAffiliateProducts(selectedAffiliate.id) : []}
+      />
+
+      <AfiliadoInfoModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        afiliado={selectedAffiliate}
+        products={products}
       />
     </div>
   );

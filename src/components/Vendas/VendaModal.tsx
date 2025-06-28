@@ -10,6 +10,7 @@ import { Product, Conjunto, Kit, Affiliate } from '../../types';
 interface VendaModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (saleData: any) => Promise<void>;
   products: Product[];
   conjuntos: Conjunto[];
   kits: Kit[];
@@ -19,24 +20,28 @@ interface VendaModalProps {
 const VendaModal: React.FC<VendaModalProps> = ({ 
   isOpen, 
   onClose, 
+  onSave,
   products, 
   conjuntos, 
   kits,
   affiliates 
 }) => {
   const [formData, setFormData] = useState({
-    tipo: 'online' as 'online' | 'fisica',
+    tipo_venda: 'online' as 'online' | 'fisica',
     afiliado_id: '',
-    items: [] as { type: 'produto' | 'conjunto' | 'kit'; id: string; quantidade: number; preco: number }[]
+    data_venda: new Date().toISOString().split('T')[0],
+    observacoes: '',
+    produtos: [] as { type: 'produto' | 'conjunto' | 'kit'; id: string; quantidade: number; preco: number }[]
   });
+  const [loading, setLoading] = useState(false);
 
   const [selectedType, setSelectedType] = useState<'produto' | 'conjunto' | 'kit'>('produto');
   const [selectedId, setSelectedId] = useState('');
   const [quantidade, setQuantidade] = useState('');
 
   const getNextSaleId = () => {
-    const nextNumber = (1).toString().padStart(3, '0');
-    return `VENDA${nextNumber}`;
+    const timestamp = Date.now();
+    return `VENDA-${timestamp}`;
   };
 
   const addItem = () => {
@@ -54,18 +59,18 @@ const VendaModal: React.FC<VendaModalProps> = ({
       preco = kit?.preco || 0;
     }
 
-    const existingIndex = formData.items.findIndex(
+    const existingIndex = formData.produtos.findIndex(
       item => item.type === selectedType && item.id === selectedId
     );
 
     if (existingIndex >= 0) {
-      const newItems = [...formData.items];
+      const newItems = [...formData.produtos];
       newItems[existingIndex].quantidade += parseInt(quantidade);
-      setFormData({ ...formData, items: newItems });
+      setFormData({ ...formData, produtos: newItems });
     } else {
       setFormData({
         ...formData,
-        items: [...formData.items, {
+        produtos: [...formData.produtos, {
           type: selectedType,
           id: selectedId,
           quantidade: parseInt(quantidade),
@@ -81,26 +86,52 @@ const VendaModal: React.FC<VendaModalProps> = ({
   const removeItem = (type: string, id: string) => {
     setFormData({
       ...formData,
-      items: formData.items.filter(item => !(item.type === type && item.id === id))
+      produtos: formData.produtos.filter(item => !(item.type === type && item.id === id))
     });
   };
 
   const calculateTotal = () => {
-    return formData.items.reduce((total, item) => {
+    return formData.produtos.reduce((total, item) => {
       return total + (item.preco * item.quantidade);
     }, 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Venda registrada:', {
-      id: getNextSaleId(),
-      ...formData,
-      total: calculateTotal(),
-      data: new Date()
-    });
-    onClose();
-    setFormData({ tipo: 'online', afiliado_id: '', items: [] });
+    setLoading(true);
+    
+    try {
+      const saleData = {
+        id: getNextSaleId(),
+        afiliado_id: formData.afiliado_id || null,
+        tipo_venda: formData.tipo_venda,
+        valor_total: calculateTotal(),
+        observacoes: formData.observacoes,
+        data_venda: formData.data_venda,
+        produtos: formData.produtos.map(item => ({
+          produto_id: item.type === 'produto' ? item.id : null,
+          conjunto_id: item.type === 'conjunto' ? item.id : null,
+          kit_id: item.type === 'kit' ? item.id : null,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco
+        }))
+      };
+
+      await onSave(saleData);
+      onClose();
+      setFormData({ 
+        tipo_venda: 'online', 
+        afiliado_id: '', 
+        data_venda: new Date().toISOString().split('T')[0],
+        observacoes: '',
+        produtos: [] 
+      });
+    } catch (error) {
+      console.error('Erro ao registrar venda:', error);
+      alert('Erro ao registrar venda. Verifique o console para mais detalhes.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getItemName = (item: any) => {
@@ -138,6 +169,9 @@ const VendaModal: React.FC<VendaModalProps> = ({
     }
   };
 
+  // Filtrar apenas afiliados ativos
+  const activeAffiliates = affiliates.filter(affiliate => affiliate.ativo);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -146,17 +180,27 @@ const VendaModal: React.FC<VendaModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Tipo de Venda</Label>
               <select
-                value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'online' | 'fisica' })}
+                value={formData.tipo_venda}
+                onChange={(e) => setFormData({ ...formData, tipo_venda: e.target.value as 'online' | 'fisica' })}
                 className="w-full rounded border p-2"
               >
                 <option value="online">Online</option>
                 <option value="fisica">Física</option>
               </select>
+            </div>
+
+            <div>
+              <Label>Data da Venda</Label>
+              <Input
+                type="date"
+                value={formData.data_venda}
+                onChange={(e) => setFormData({ ...formData, data_venda: e.target.value })}
+                required
+              />
             </div>
 
             <div>
@@ -167,13 +211,22 @@ const VendaModal: React.FC<VendaModalProps> = ({
                 className="w-full rounded border p-2"
               >
                 <option value="">Nenhum afiliado</option>
-                {affiliates.filter(a => a.ativo).map(affiliate => (
+                {activeAffiliates.map(affiliate => (
                   <option key={affiliate.id} value={affiliate.id}>
-                    {affiliate.nome_completo}
+                    {affiliate.nome_completo} ({affiliate.id})
                   </option>
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <Label>Observações</Label>
+            <Input
+              value={formData.observacoes}
+              onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+              placeholder="Observações sobre a venda (opcional)"
+            />
           </div>
 
           <div className="border rounded p-4">
@@ -216,7 +269,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              {formData.items.map((item, index) => (
+              {formData.produtos.map((item, index) => (
                 <div key={`${item.type}-${item.id}-${index}`} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <div className="flex items-center gap-2">
                     <Badge variant={item.type === 'produto' ? 'default' : item.type === 'conjunto' ? 'secondary' : 'outline'}>
@@ -240,7 +293,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
             </div>
           </div>
 
-          {formData.items.length > 0 && (
+          {formData.produtos.length > 0 && (
             <div className="border rounded p-4 bg-gray-50">
               <div className="text-lg font-bold text-vertttraue-primary">
                 Total: R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -249,15 +302,15 @@ const VendaModal: React.FC<VendaModalProps> = ({
           )}
 
           <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1" disabled={loading}>
               Cancelar
             </Button>
             <Button 
               type="submit" 
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-              disabled={formData.items.length === 0}
+              disabled={formData.produtos.length === 0 || loading}
             >
-              Registrar Venda
+              {loading ? 'Registrando...' : 'Registrar Venda'}
             </Button>
           </div>
         </form>

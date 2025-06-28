@@ -2,9 +2,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { Package, Factory, Users, DollarSign, Settings } from 'lucide-react';
+import { Package, Factory, Users, DollarSign, Settings, TrendingUp } from 'lucide-react';
 import Header from '../Layout/Header';
 import MenuCard from '../Layout/MenuCard';
+import { useProducts } from '../../hooks/useProducts';
+import { useSuppliers } from '../../hooks/useSuppliers';
+import { useAffiliates } from '../../hooks/useAffiliates';
+import { useSales } from '../../hooks/useSales';
 
 interface DashboardPageProps {
   onNavigate: (page: 'dashboard' | 'estoque' | 'fornecedores' | 'afiliados' | 'vendas' | 'debug') => void;
@@ -12,6 +16,18 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { userName, logout } = useAuth();
+  const { products } = useProducts();
+  const { suppliers } = useSuppliers();
+  const { affiliates } = useAffiliates();
+  const { sales } = useSales();
+
+  // Calcular estatísticas
+  const totalProducts = products.length;
+  const totalSuppliers = suppliers.length;
+  const activeAffiliates = affiliates.filter(a => a.ativo).length;
+  const totalSales = sales.reduce((total, sale) => total + sale.total, 0);
+
+  const lowStockProducts = products.filter(p => p.estoque_site < 10).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
@@ -34,6 +50,64 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </Button>
         </div>
 
+        {/* Cards de Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm">Total de Produtos</p>
+                <p className="text-2xl font-bold text-vertttraue-primary">{totalProducts}</p>
+              </div>
+              <Package className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm">Fornecedores</p>
+                <p className="text-2xl font-bold text-vertttraue-primary">{totalSuppliers}</p>
+              </div>
+              <Factory className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm">Afiliados Ativos</p>
+                <p className="text-2xl font-bold text-vertttraue-primary">{activeAffiliates}</p>
+              </div>
+              <Users className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm">Vendas Totais</p>
+                <p className="text-2xl font-bold text-vertttraue-primary">
+                  R$ {totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-amber-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Alertas */}
+        {lowStockProducts > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
+              <p className="text-yellow-800">
+                <strong>Atenção:</strong> {lowStockProducts} produto(s) com estoque baixo (menos de 10 unidades)
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Menu Principal */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MenuCard
             title="Estoque"

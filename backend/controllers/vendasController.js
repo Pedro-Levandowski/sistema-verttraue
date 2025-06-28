@@ -20,7 +20,22 @@ const getAllVendas = async (req, res) => {
     `);
 
     console.log(`✅ ${result.rows.length} vendas encontradas`);
-    res.json(result.rows);
+    
+    // Formatando os dados para o frontend
+    const vendas = result.rows.map(venda => ({
+      id: venda.id,
+      data: venda.data_venda,
+      tipo: venda.tipo_venda,
+      total: parseFloat(venda.valor_total),
+      afiliado: venda.afiliado_nome ? {
+        id: venda.afiliado_id,
+        nome_completo: venda.afiliado_nome,
+        email: venda.afiliado_email
+      } : null,
+      produtos: [] // será preenchido quando necessário
+    }));
+
+    res.json(vendas);
   } catch (error) {
     console.error('❌ Erro ao buscar vendas:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -88,10 +103,18 @@ const createVenda = async (req, res) => {
       tipo_venda,
       valor_total,
       observacoes,
+      data_venda,
       produtos
     } = req.body;
 
-    console.log('💰 Criando venda:', { id, afiliado_id, valor_total, produtos: produtos?.length });
+    console.log('💰 Criando venda:', { 
+      id, 
+      afiliado_id, 
+      tipo_venda,
+      valor_total, 
+      data_venda,
+      produtos: produtos?.length 
+    });
 
     if (!id || !produtos || produtos.length === 0) {
       return res.status(400).json({ error: 'ID e produtos são obrigatórios' });
@@ -114,9 +137,16 @@ const createVenda = async (req, res) => {
       INSERT INTO vendas (
         id, afiliado_id, tipo_venda, valor_total, observacoes, data_venda
       )
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [id, afiliado_id, tipo_venda || 'online', valor_total || 0, observacoes || '']);
+    `, [
+      id, 
+      afiliado_id || null, 
+      tipo_venda || 'online', 
+      valor_total || 0, 
+      observacoes || '',
+      data_venda ? new Date(data_venda) : new Date()
+    ]);
 
     // Inserir produtos da venda
     for (const produto of produtos) {
@@ -131,15 +161,18 @@ const createVenda = async (req, res) => {
           venda_id, produto_id, conjunto_id, kit_id, quantidade, preco_unitario
         )
         VALUES ($1, $2, $3, $4, $5, $6)
-      `, [id, produto_id, conjunto_id, kit_id, quantidade, preco_unitario || 0]);
+      `, [id, produto_id || null, conjunto_id || null, kit_id || null, quantidade, preco_unitario || 0]);
 
       // Atualizar estoque se for produto individual
       if (produto_id) {
-        await client.query(`
+        const updateResult = await client.query(`
           UPDATE produtos 
           SET estoque_site = GREATEST(0, estoque_site - $1)
           WHERE id = $2
+          RETURNING estoque_site
         `, [quantidade, produto_id]);
+        
+        console.log(`📦 Estoque atualizado para produto ${produto_id}: ${updateResult.rows[0]?.estoque_site}`);
       }
     }
 

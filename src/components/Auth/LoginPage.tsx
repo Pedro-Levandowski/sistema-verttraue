@@ -16,6 +16,11 @@ const LoginPage: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState('');
   const { login } = useAuth();
 
+  // Estados para criação de usuário
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newNome, setNewNome] = useState('');
+
   const testBackend = async () => {
     try {
       setDebugInfo('🔍 Testando conexão com backend...');
@@ -29,13 +34,12 @@ const LoginPage: React.FC = () => {
   const testDatabase = async () => {
     try {
       setDebugInfo('🗄️ Testando conexão com banco de dados...');
-      const response = await fetch('http://localhost:3001/api/auth/test-database');
-      const data = await response.json();
+      const response = await authAPI.testDatabase();
       
-      if (data.success) {
-        setDebugInfo(`✅ Banco de dados OK:\n${JSON.stringify(data.results, null, 2)}`);
+      if (response.success) {
+        setDebugInfo(`✅ Banco de dados OK:\n${JSON.stringify(response.results, null, 2)}`);
       } else {
-        setDebugInfo(`❌ Erro no banco: ${data.error}\n${data.details || ''}`);
+        setDebugInfo(`❌ Erro no banco: ${response.error}\n${response.details || ''}`);
       }
     } catch (err) {
       setDebugInfo(`❌ Erro ao testar banco: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
@@ -45,22 +49,43 @@ const LoginPage: React.FC = () => {
   const resetAdmin = async () => {
     try {
       setDebugInfo('🔄 Resetando usuário admin...');
-      const response = await fetch('http://localhost:3001/api/auth/reset-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await response.json();
+      const response = await authAPI.resetAdmin();
       
-      if (response.ok) {
-        setDebugInfo(`✅ Admin resetado:\n${JSON.stringify(data, null, 2)}`);
+      if (response.success) {
+        setDebugInfo(`✅ Admin resetado:\n${JSON.stringify(response.admin, null, 2)}`);
         // Atualizar os campos com as credenciais
         setEmail('admin@vertttraue.com');
         setPassword('123456');
       } else {
-        setDebugInfo(`❌ Erro ao resetar admin: ${data.error}`);
+        setDebugInfo(`❌ Erro ao resetar admin: ${response.error}`);
       }
     } catch (err) {
       setDebugInfo(`❌ Erro ao resetar admin: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    }
+  };
+
+  const createUser = async () => {
+    if (!newUsername || !newPassword) {
+      setDebugInfo('❌ Username e senha são obrigatórios para criar usuário');
+      return;
+    }
+
+    try {
+      setDebugInfo('👤 Criando novo usuário...');
+      
+      const response = await authAPI.createUser(newUsername, newPassword, newNome);
+      
+      if (response.success) {
+        setDebugInfo(`✅ Usuário criado com sucesso:\nUsername: ${response.credentials.username}\nSenha: ${response.credentials.password}\nNome: ${response.user.nome}`);
+        // Limpar campos
+        setNewUsername('');
+        setNewPassword('');
+        setNewNome('');
+      } else {
+        setDebugInfo(`❌ Erro ao criar usuário: ${response.error}`);
+      }
+    } catch (err) {
+      setDebugInfo(`❌ Erro ao criar usuário: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -72,7 +97,7 @@ const LoginPage: React.FC = () => {
       const timestamp = Date.now();
       const testUsername = `teste${timestamp}@vertttraue.com`;
       
-      await authAPI.register(testUsername, '123456', 'Usuario Teste');
+      const response = await authAPI.createUser(testUsername, '123456', 'Usuario Teste');
       setDebugInfo(`✅ Usuário teste criado:\nE-mail: ${testUsername}\nSenha: 123456`);
     } catch (err) {
       setDebugInfo(`⚠️ Erro ao criar usuário: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
@@ -211,6 +236,40 @@ const LoginPage: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          {/* Seção para criar usuário personalizado */}
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="font-semibold text-green-800 mb-3">🔐 Criar Usuário Personalizado</h3>
+            <div className="space-y-2">
+              <Input
+                placeholder="Username/Email"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                className="text-sm"
+              />
+              <Input
+                type="password"
+                placeholder="Senha"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="text-sm"
+              />
+              <Input
+                placeholder="Nome (opcional)"
+                value={newNome}
+                onChange={(e) => setNewNome(e.target.value)}
+                className="text-sm"
+              />
+              <Button 
+                onClick={createUser}
+                variant="outline"
+                size="sm"
+                className="w-full text-xs bg-green-100 hover:bg-green-200"
+              >
+                Criar Usuário
+              </Button>
+            </div>
+          </div>
           
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="font-semibold text-blue-800 mb-2">🚨 Diagnóstico Completo:</h3>
@@ -219,6 +278,7 @@ const LoginPage: React.FC = () => {
               <p><strong>2. Testar Banco:</strong> Verifica conexão e estrutura do banco</p>
               <p><strong>3. Reset Admin:</strong> Recria usuário admin@vertttraue.com</p>
               <p><strong>4. Criar Teste:</strong> Cria usuário único para teste</p>
+              <p><strong>5. Criar Usuário:</strong> Cria usuário com dados personalizados</p>
               
               <div className="mt-2 p-2 bg-blue-100 rounded">
                 <p className="font-medium">Credenciais Padrão:</p>
