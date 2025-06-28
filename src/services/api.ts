@@ -14,34 +14,59 @@ const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
     },
   };
 
-  console.log(`🌐 API Request: ${options.method || 'GET'} ${endpoint}`);
+  console.log(`🌐 API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
+  console.log('📤 Request config:', config);
   
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-    console.error(`❌ API Error (${response.status}):`, error);
-    throw new Error(error.error || `HTTP ${response.status}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    console.log(`📥 Response status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error (${response.status}):`, errorText);
+      
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText || `HTTP ${response.status}` };
+      }
+      
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`✅ API Success: ${endpoint}`, data);
+    return data;
+  } catch (fetchError) {
+    console.error(`🚨 Fetch Error:`, fetchError);
+    throw fetchError;
   }
-  
-  const data = await response.json();
-  console.log(`✅ API Success: ${endpoint}`, data);
-  return data;
 };
 
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string) => {
+    console.log('🔐 Tentando login com:', { email, password: '***' });
+    
+    // Garantir que estamos enviando username (não email) para o backend
     return makeRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username: email, password }),
+      body: JSON.stringify({ 
+        username: email, // Backend espera 'username'
+        password: password 
+      }),
     });
   },
   
-  register: async (email: string, password: string, nome: string) => {
+  register: async (email: string, password: string, nome?: string) => {
     return makeRequest('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username: email, password, nome }),
+      body: JSON.stringify({ 
+        username: email, 
+        password, 
+        nome 
+      }),
     });
   },
 
@@ -162,12 +187,24 @@ export const kitsAPI = {
 
 // Debug API
 export const debugAPI = {
-  healthCheck: () => fetch('http://localhost:3001/health').then(res => res.json()),
+  healthCheck: async () => {
+    try {
+      const response = await fetch('http://localhost:3001/health');
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Health check failed:', error);
+      throw error;
+    }
+  },
   apiInfo: () => makeRequest(''),
   testAuth: () => makeRequest('/auth/verify'),
   testProducts: () => makeRequest('/produtos'),
   testSuppliers: () => makeRequest('/fornecedores'),
   testAffiliates: () => makeRequest('/afiliados'),
+  testLogin: async (email: string, password: string) => {
+    console.log('🧪 Debug Login Test:', { email, password: '***' });
+    return authAPI.login(email, password);
+  }
 };
 
 export default {
