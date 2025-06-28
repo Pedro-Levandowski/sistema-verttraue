@@ -26,11 +26,54 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const testDatabase = async () => {
+    try {
+      setDebugInfo('🗄️ Testando conexão com banco de dados...');
+      const response = await fetch('http://localhost:3001/api/auth/test-database');
+      const data = await response.json();
+      
+      if (data.success) {
+        setDebugInfo(`✅ Banco de dados OK:\n${JSON.stringify(data.results, null, 2)}`);
+      } else {
+        setDebugInfo(`❌ Erro no banco: ${data.error}\n${data.details || ''}`);
+      }
+    } catch (err) {
+      setDebugInfo(`❌ Erro ao testar banco: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    }
+  };
+
+  const resetAdmin = async () => {
+    try {
+      setDebugInfo('🔄 Resetando usuário admin...');
+      const response = await fetch('http://localhost:3001/api/auth/reset-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setDebugInfo(`✅ Admin resetado:\n${JSON.stringify(data, null, 2)}`);
+        // Atualizar os campos com as credenciais
+        setEmail('admin@vertttraue.com');
+        setPassword('123456');
+      } else {
+        setDebugInfo(`❌ Erro ao resetar admin: ${data.error}`);
+      }
+    } catch (err) {
+      setDebugInfo(`❌ Erro ao resetar admin: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    }
+  };
+
   const createTestUser = async () => {
     try {
       setDebugInfo('👤 Criando usuário teste...');
-      await authAPI.register('admin@vertttraue.com', '123456', 'Admin');
-      setDebugInfo('✅ Usuário teste criado com sucesso!');
+      
+      // Gerar um username único
+      const timestamp = Date.now();
+      const testUsername = `teste${timestamp}@vertttraue.com`;
+      
+      await authAPI.register(testUsername, '123456', 'Usuario Teste');
+      setDebugInfo(`✅ Usuário teste criado:\nE-mail: ${testUsername}\nSenha: 123456`);
     } catch (err) {
       setDebugInfo(`⚠️ Erro ao criar usuário: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
@@ -128,37 +171,60 @@ const LoginPage: React.FC = () => {
           </form>
           
           <div className="mt-4 space-y-2">
-            <Button 
-              onClick={testBackend}
-              variant="outline"
-              className="w-full"
-              size="sm"
-            >
-              🔍 Testar Backend
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                onClick={testBackend}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                🔍 Backend
+              </Button>
+              
+              <Button 
+                onClick={testDatabase}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                🗄️ Banco
+              </Button>
+            </div>
             
-            <Button 
-              onClick={createTestUser}
-              variant="outline"
-              className="w-full"
-              size="sm"
-            >
-              👤 Criar Usuário Teste
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                onClick={resetAdmin}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-red-50 hover:bg-red-100"
+              >
+                🔄 Reset Admin
+              </Button>
+              
+              <Button 
+                onClick={createTestUser}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                👤 Criar Teste
+              </Button>
+            </div>
           </div>
           
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">📋 Debug do Sistema:</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">🚨 Diagnóstico Completo:</h3>
             <div className="text-sm text-blue-700 space-y-1">
-              <p><strong>1. Iniciar Backend:</strong></p>
-              <code className="block bg-blue-100 p-1 rounded text-xs">cd backend && npm run dev</code>
+              <p><strong>1. Testar Backend:</strong> Verifica se servidor está rodando</p>
+              <p><strong>2. Testar Banco:</strong> Verifica conexão e estrutura do banco</p>
+              <p><strong>3. Reset Admin:</strong> Recria usuário admin@vertttraue.com</p>
+              <p><strong>4. Criar Teste:</strong> Cria usuário único para teste</p>
               
-              <p className="mt-2"><strong>2. Credenciais:</strong></p>
-              <p>E-mail: <code>admin@vertttraue.com</code></p>
-              <p>Senha: <code>123456</code></p>
-              
-              <p className="mt-2"><strong>3. Se não funcionar:</strong></p>
-              <p className="text-xs">Use os botões de teste acima para diagnosticar</p>
+              <div className="mt-2 p-2 bg-blue-100 rounded">
+                <p className="font-medium">Credenciais Padrão:</p>
+                <p>E-mail: <code>admin@vertttraue.com</code></p>
+                <p>Senha: <code>123456</code></p>
+              </div>
             </div>
           </div>
         </CardContent>

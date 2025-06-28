@@ -1,7 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { login, verifyToken, register } = require('../controllers/authController');
+const { login, verifyToken, register, testDatabase, resetAdmin } = require('../controllers/authController');
 const { validateLogin } = require('../middleware/validation');
 
 // Login de usuário
@@ -10,7 +10,13 @@ router.post('/login', validateLogin, login);
 // Verificar token
 router.get('/verify', verifyToken);
 
-// Registrar usuário (apenas para desenvolvimento)
+// Registrar usuário
 router.post('/register', validateLogin, register);
+
+// Testar conexão com banco de dados
+router.get('/test-database', testDatabase);
+
+// Resetar usuário admin
+router.post('/reset-admin', resetAdmin);
 
 module.exports = router;

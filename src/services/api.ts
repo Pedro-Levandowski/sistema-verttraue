@@ -1,4 +1,3 @@
-
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Função para fazer requisições autenticadas
@@ -49,7 +48,6 @@ export const authAPI = {
   login: async (email: string, password: string) => {
     console.log('🔐 Tentando login com:', { email, password: '***' });
     
-    // Garantir que estamos enviando username (não email) para o backend
     return makeRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ 
@@ -72,6 +70,14 @@ export const authAPI = {
 
   verify: async () => {
     return makeRequest('/auth/verify');
+  },
+
+  testDatabase: async () => {
+    return makeRequest('/auth/test-database');
+  },
+
+  resetAdmin: async () => {
+    return makeRequest('/auth/reset-admin', { method: 'POST' });
   }
 };
 
@@ -201,6 +207,8 @@ export const debugAPI = {
   testProducts: () => makeRequest('/produtos'),
   testSuppliers: () => makeRequest('/fornecedores'),
   testAffiliates: () => makeRequest('/afiliados'),
+  testDatabase: () => authAPI.testDatabase(),
+  resetAdmin: () => authAPI.resetAdmin(),
   testLogin: async (email: string, password: string) => {
     console.log('🧪 Debug Login Test:', { email, password: '***' });
     return authAPI.login(email, password);
