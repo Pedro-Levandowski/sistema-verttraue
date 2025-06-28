@@ -20,7 +20,9 @@ const FornecedorProdutosModal: React.FC<FornecedorProdutosModalProps> = ({
   if (!supplier) return null;
 
   const supplierProducts = products.filter(product => product.fornecedor.id === supplier.id);
-  const totalValue = supplierProducts.reduce((sum, product) => sum + (product.preco_compra * (product.estoque_fisico + product.estoque_site)), 0);
+  
+  // Corrigido: soma apenas o valor de compra de cada produto UMA VEZ (sem considerar estoque)
+  const totalCompra = supplierProducts.reduce((sum, product) => sum + product.preco_compra, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -38,8 +40,8 @@ const FornecedorProdutosModal: React.FC<FornecedorProdutosModalProps> = ({
                 <p className="font-bold text-lg">{supplierProducts.length}</p>
               </div>
               <div>
-                <span className="text-sm text-gray-600">Valor Total Investido:</span>
-                <p className="font-bold text-lg text-vertttraue-primary">R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <span className="text-sm text-gray-600">Valor Total de Compra:</span>
+                <p className="font-bold text-lg text-vertttraue-primary">R$ {totalCompra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <span className="text-sm text-gray-600">Estoque Total:</span>
@@ -58,13 +60,11 @@ const FornecedorProdutosModal: React.FC<FornecedorProdutosModalProps> = ({
                     <th className="text-left p-2">Estoque</th>
                     <th className="text-left p-2">Preço Compra</th>
                     <th className="text-left p-2">Preço Venda</th>
-                    <th className="text-left p-2">Valor Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {supplierProducts.map((product) => {
                     const estoqueTotal = product.estoque_fisico + product.estoque_site;
-                    const valorTotal = product.preco_compra * estoqueTotal;
                     return (
                       <tr key={product.id} className="border-b hover:bg-gray-50">
                         <td className="p-2 font-mono">{product.id}</td>
@@ -74,9 +74,6 @@ const FornecedorProdutosModal: React.FC<FornecedorProdutosModalProps> = ({
                         </td>
                         <td className="p-2">R$ {product.preco_compra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         <td className="p-2">R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-2 font-bold text-vertttraue-primary">
-                          R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </td>
                       </tr>
                     );
                   })}

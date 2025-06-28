@@ -202,6 +202,17 @@ export const kitsAPI = {
   }),
 };
 
+// Estoque API
+export const estoqueAPI = {
+  updateAfiliadoEstoque: (produto_id: string, afiliado_id: string, quantidade: number) => 
+    makeRequest('/estoque/afiliado', {
+      method: 'PUT',
+      body: JSON.stringify({ produto_id, afiliado_id, quantidade }),
+    }),
+  getEstoquePorAfiliado: (afiliado_id: string) => 
+    makeRequest(`/estoque/afiliado/${afiliado_id}`),
+};
+
 // Debug API
 export const debugAPI = {
   healthCheck: async () => {
@@ -234,5 +245,6 @@ export default {
   sales: salesAPI,
   conjuntos: conjuntosAPI,
   kits: kitsAPI,
+  estoque: estoqueAPI,
   debug: debugAPI,
 };

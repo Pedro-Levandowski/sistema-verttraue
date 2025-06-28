@@ -1,7 +1,6 @@
-
 const pool = require('../config/database');
 
-// Listar todos os produtos com informações de fornecedor
+// Listar todos os produtos com informações de fornecedor e estoque de afiliados
 const getAllProdutos = async (req, res) => {
   try {
     console.log('📦 Buscando todos os produtos...');
@@ -17,23 +16,39 @@ const getAllProdutos = async (req, res) => {
       ORDER BY p.created_at DESC
     `);
 
-    const produtos = result.rows.map(row => ({
-      id: row.id,
-      nome: row.nome,
-      descricao: row.descricao,
-      estoque_fisico: row.estoque_fisico || 0,
-      estoque_site: row.estoque_site || 0,
-      preco: parseFloat(row.preco || 0),
-      preco_compra: parseFloat(row.preco_compra || 0),
-      fornecedor: {
-        id: row.fornecedor_id,
-        nome: row.fornecedor_nome,
-        cidade: row.fornecedor_cidade,
-        contato: row.fornecedor_contato
-      },
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }));
+    // Buscar estoque de afiliados para cada produto
+    const produtos = [];
+    for (const row of result.rows) {
+      const estoqueAfiliados = await pool.query(`
+        SELECT ae.*, a.nome_completo as afiliado_nome
+        FROM afiliado_estoque ae
+        JOIN afiliados a ON ae.afiliado_id = a.id
+        WHERE ae.produto_id = $1
+      `, [row.id]);
+
+      produtos.push({
+        id: row.id,
+        nome: row.nome,
+        descricao: row.descricao,
+        estoque_fisico: row.estoque_fisico || 0,
+        estoque_site: row.estoque_site || 0,
+        preco: parseFloat(row.preco || 0),
+        preco_compra: parseFloat(row.preco_compra || 0),
+        fornecedor: {
+          id: row.fornecedor_id,
+          nome: row.fornecedor_nome,
+          cidade: row.fornecedor_cidade,
+          contato: row.fornecedor_contato
+        },
+        afiliado_estoque: estoqueAfiliados.rows.map(ae => ({
+          afiliado_id: ae.afiliado_id,
+          afiliado_nome: ae.afiliado_nome,
+          quantidade: ae.quantidade
+        })),
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      });
+    }
 
     console.log(`✅ ${produtos.length} produtos encontrados`);
     res.json(produtos);
@@ -43,7 +58,7 @@ const getAllProdutos = async (req, res) => {
   }
 };
 
-// Buscar produto por ID
+// Buscar produto por ID com informações completas
 const getProdutoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -73,6 +88,14 @@ const getProdutoById = async (req, res) => {
       [id]
     );
 
+    // Buscar estoque de afiliados
+    const estoqueAfiliados = await pool.query(`
+      SELECT ae.*, a.nome_completo as afiliado_nome
+      FROM afiliado_estoque ae
+      JOIN afiliados a ON ae.afiliado_id = a.id
+      WHERE ae.produto_id = $1
+    `, [id]);
+
     const produtoCompleto = {
       id: produto.id,
       nome: produto.nome,
@@ -87,6 +110,11 @@ const getProdutoById = async (req, res) => {
         cidade: produto.fornecedor_cidade,
         contato: produto.fornecedor_contato
       },
+      afiliado_estoque: estoqueAfiliados.rows.map(ae => ({
+        afiliado_id: ae.afiliado_id,
+        afiliado_nome: ae.afiliado_nome,
+        quantidade: ae.quantidade
+      })),
       fotos: fotosResult.rows.map(row => row.url_foto),
       created_at: produto.created_at,
       updated_at: produto.updated_at
@@ -249,6 +277,9 @@ const deleteProduto = async (req, res) => {
         error: 'Não é possível deletar produto com vendas vinculadas' 
       });
     }
+
+    // Deletar estoque de afiliados primeiro
+    await pool.query('DELETE FROM afiliado_estoque WHERE produto_id = $1', [id]);
 
     // Deletar fotos primeiro
     await pool.query('DELETE FROM produto_fotos WHERE produto_id = $1', [id]);

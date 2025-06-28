@@ -27,7 +27,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const activeAffiliates = affiliates.filter(a => a.ativo).length;
   const totalSales = sales.reduce((total, sale) => total + sale.total, 0);
 
-  const lowStockProducts = products.filter(p => p.estoque_site < 10).length;
+  // Alterar para estoque baixo < 3 unidades
+  const lowStockProducts = products.filter(p => p.estoque_site < 3).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
@@ -95,19 +96,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Alertas */}
+        {/* Alertas - alterado para menos de 3 unidades */}
         {lowStockProducts > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
               <p className="text-yellow-800">
-                <strong>Atenção:</strong> {lowStockProducts} produto(s) com estoque baixo (menos de 10 unidades)
+                <strong>Atenção:</strong> {lowStockProducts} produto(s) com estoque baixo (menos de 3 unidades)
               </p>
             </div>
           </div>
         )}
 
-        {/* Menu Principal */}
+        {/* Menu Principal - Visual clássico mais agradável */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MenuCard
             title="Estoque"

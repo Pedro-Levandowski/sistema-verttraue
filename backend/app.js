@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -40,6 +39,7 @@ const afiliadosRoutes = require('./routes/afiliados');
 const vendasRoutes = require('./routes/vendas');
 const conjuntosRoutes = require('./routes/conjuntos');
 const kitsRoutes = require('./routes/kits');
+const estoqueRoutes = require('./routes/estoque');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -49,6 +49,7 @@ app.use('/api/afiliados', afiliadosRoutes);
 app.use('/api/vendas', vendasRoutes);
 app.use('/api/conjuntos', conjuntosRoutes);
 app.use('/api/kits', kitsRoutes);
+app.use('/api/estoque', estoqueRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {
@@ -117,6 +118,10 @@ app.get('/api', (req, res) => {
         'POST /api/kits': 'Criar novo kit',
         'PUT /api/kits/:id': 'Atualizar kit',
         'DELETE /api/kits/:id': 'Deletar kit'
+      },
+      estoque: {
+        'PUT /api/estoque/afiliado': 'Atualizar estoque de afiliado',
+        'GET /api/estoque/afiliado/:afiliado_id': 'Buscar estoque por afiliado'
       }
     },
     documentation: 'Todas as rotas (exceto auth) requerem autenticação via Bearer token'
