@@ -29,22 +29,23 @@ const getAllProdutos = async (req, res) => {
       produtos.push({
         id: row.id,
         nome: row.nome,
-        descricao: row.descricao,
+        descricao: row.descricao || '',
         estoque_fisico: row.estoque_fisico || 0,
         estoque_site: row.estoque_site || 0,
         preco: parseFloat(row.preco || 0),
         preco_compra: parseFloat(row.preco_compra || 0),
-        fornecedor: {
+        fornecedor: row.fornecedor_id ? {
           id: row.fornecedor_id,
-          nome: row.fornecedor_nome,
-          cidade: row.fornecedor_cidade,
-          contato: row.fornecedor_contato
-        },
+          nome: row.fornecedor_nome || '',
+          cidade: row.fornecedor_cidade || '',
+          contato: row.fornecedor_contato || ''
+        } : null,
         afiliado_estoque: estoqueAfiliados.rows.map(ae => ({
           afiliado_id: ae.afiliado_id,
           afiliado_nome: ae.afiliado_nome,
           quantidade: ae.quantidade
         })),
+        fotos: [], // Será preenchido se necessário
         created_at: row.created_at,
         updated_at: row.updated_at
       });
@@ -99,17 +100,17 @@ const getProdutoById = async (req, res) => {
     const produtoCompleto = {
       id: produto.id,
       nome: produto.nome,
-      descricao: produto.descricao,
+      descricao: produto.descricao || '',
       estoque_fisico: produto.estoque_fisico || 0,
       estoque_site: produto.estoque_site || 0,
       preco: parseFloat(produto.preco || 0),
       preco_compra: parseFloat(produto.preco_compra || 0),
-      fornecedor: {
+      fornecedor: produto.fornecedor_id ? {
         id: produto.fornecedor_id,
-        nome: produto.fornecedor_nome,
-        cidade: produto.fornecedor_cidade,
-        contato: produto.fornecedor_contato
-      },
+        nome: produto.fornecedor_nome || '',
+        cidade: produto.fornecedor_cidade || '',
+        contato: produto.fornecedor_contato || ''
+      } : null,
       afiliado_estoque: estoqueAfiliados.rows.map(ae => ({
         afiliado_id: ae.afiliado_id,
         afiliado_nome: ae.afiliado_nome,
