@@ -44,7 +44,19 @@ function AppContent() {
       case 'vendas':
         return <VendasPage onBack={() => setCurrentPage('dashboard')} />;
       case 'debug':
-        return <ApiTestComponent onBack={() => setCurrentPage('dashboard')} />;
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray p-4">
+            <div className="mb-4">
+              <button
+                onClick={() => setCurrentPage('dashboard')}
+                className="bg-vertttraue-primary text-white px-4 py-2 rounded hover:bg-vertttraue-primary/80"
+              >
+                ← Voltar ao Dashboard
+              </button>
+            </div>
+            <ApiTestComponent />
+          </div>
+        );
       default:
         return <DashboardPage onNavigate={setCurrentPage} />;
     }
