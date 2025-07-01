@@ -5,11 +5,12 @@
 -- Extensões necessárias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Tabela de usuários administrativos
-CREATE TABLE IF NOT EXISTS usuarios_admin (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username VARCHAR(50) UNIQUE NOT NULL,
+-- Tabela de usuários (CORRIGIDA - agora usa 'usuarios' ao invés de 'usuarios_admin')
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    nome VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -159,8 +160,8 @@ $$ language 'plpgsql';
 -- Criar triggers apenas se não existirem
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_usuarios_admin_updated_at') THEN
-        CREATE TRIGGER update_usuarios_admin_updated_at BEFORE UPDATE ON usuarios_admin FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_usuarios_updated_at') THEN
+        CREATE TRIGGER update_usuarios_updated_at BEFORE UPDATE ON usuarios FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_fornecedores_updated_at') THEN
@@ -192,9 +193,24 @@ BEGIN
     END IF;
 END$$;
 
--- Inserir usuário admin padrão apenas se não existir (senha: admin123)
-INSERT INTO usuarios_admin (username, password_hash) 
-SELECT 'admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'
-WHERE NOT EXISTS (SELECT 1 FROM usuarios_admin WHERE username = 'admin');
+-- Migração: Se existir usuarios_admin, migrar dados para usuarios
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'usuarios_admin') THEN
+        -- Migrar dados existentes
+        INSERT INTO usuarios (username, password_hash, nome, created_at)
+        SELECT username, password_hash, username as nome, created_at 
+        FROM usuarios_admin 
+        WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE usuarios.username = usuarios_admin.username);
+        
+        -- Dropar tabela antiga após migração
+        DROP TABLE IF EXISTS usuarios_admin;
+    END IF;
+END$$;
 
-COMMENT ON DATABASE CURRENT_DATABASE() IS 'Sistema de Gestão vertttraue - Database v1.0';
+-- Inserir usuário admin padrão apenas se não existir (senha: 123456)
+INSERT INTO usuarios (username, password_hash, nome) 
+SELECT 'admin@vertttraue.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrador'
+WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE username = 'admin@vertttraue.com');
+
+COMMENT ON DATABASE CURRENT_DATABASE() IS 'Sistema de Gestão vertttraue - Database v2.0';

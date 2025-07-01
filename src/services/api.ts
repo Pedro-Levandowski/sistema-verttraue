@@ -1,3 +1,4 @@
+
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Função para fazer requisições autenticadas
@@ -45,6 +46,10 @@ const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
 
 // Auth API
 export const authAPI = {
+  initDatabase: async () => {
+    return makeRequest('/auth/init-database', { method: 'POST' });
+  },
+
   login: async (email: string, password: string) => {
     console.log('🔐 Tentando login com:', { email, password: '***' });
     
@@ -231,6 +236,7 @@ export const debugAPI = {
   testAffiliates: () => makeRequest('/afiliados'),
   testDatabase: () => authAPI.testDatabase(),
   resetAdmin: () => authAPI.resetAdmin(),
+  initDatabase: () => authAPI.initDatabase(),
   testLogin: async (email: string, password: string) => {
     console.log('🧪 Debug Login Test:', { email, password: '***' });
     return authAPI.login(email, password);

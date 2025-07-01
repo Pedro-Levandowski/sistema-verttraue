@@ -1,8 +1,11 @@
 
 const express = require('express');
 const router = express.Router();
-const { login, verifyToken, register, testDatabase, resetAdmin, createUser } = require('../controllers/authController');
+const { initDatabase, login, verifyToken, register, testDatabase, resetAdmin, createUser } = require('../controllers/authController');
 const { validateLogin } = require('../middleware/validation');
+
+// Inicializar banco de dados (NOVO - deve ser o primeiro a ser executado)
+router.post('/init-database', initDatabase);
 
 // Login de usuário
 router.post('/login', validateLogin, login);

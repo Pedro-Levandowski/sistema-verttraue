@@ -21,6 +21,25 @@ const LoginPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newNome, setNewNome] = useState('');
 
+  const initDatabase = async () => {
+    try {
+      setDebugInfo('🚀 Inicializando banco de dados...');
+      const response = await authAPI.initDatabase();
+      
+      if (response.success) {
+        setDebugInfo(`✅ Banco inicializado com sucesso!\n\nTabelas criadas: ${response.tables.join(', ')}\nUsuários no banco: ${response.userCount}\n\nCredenciais padrão:\nUsername: ${response.adminCredentials.username}\nSenha: ${response.adminCredentials.password}`);
+        
+        // Atualizar campos com as credenciais
+        setEmail('admin@vertttraue.com');
+        setPassword('123456');
+      } else {
+        setDebugInfo(`❌ Erro na inicialização: ${response.error}`);
+      }
+    } catch (err) {
+      setDebugInfo(`❌ Erro ao inicializar banco: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    }
+  };
+
   const testBackend = async () => {
     try {
       setDebugInfo('🔍 Testando conexão com backend...');
@@ -195,6 +214,20 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
           
+          {/* BOTÃO PRINCIPAL DE INICIALIZAÇÃO */}
+          <div className="mt-4">
+            <Button 
+              onClick={initDatabase}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+              size="lg"
+            >
+              🚀 INICIALIZAR BANCO DE DADOS
+            </Button>
+            <p className="text-xs text-center mt-2 text-green-700">
+              Execute primeiro se for a primeira vez usando o sistema
+            </p>
+          </div>
+          
           <div className="mt-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <Button 
@@ -272,13 +305,13 @@ const LoginPage: React.FC = () => {
           </div>
           
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">🚨 Diagnóstico Completo:</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">🚨 Guia de Troubleshooting:</h3>
             <div className="text-sm text-blue-700 space-y-1">
-              <p><strong>1. Testar Backend:</strong> Verifica se servidor está rodando</p>
-              <p><strong>2. Testar Banco:</strong> Verifica conexão e estrutura do banco</p>
-              <p><strong>3. Reset Admin:</strong> Recria usuário admin@vertttraue.com</p>
-              <p><strong>4. Criar Teste:</strong> Cria usuário único para teste</p>
-              <p><strong>5. Criar Usuário:</strong> Cria usuário com dados personalizados</p>
+              <p><strong>1. INICIALIZAR BANCO:</strong> Criar tabelas e usuário admin</p>
+              <p><strong>2. Testar Backend:</strong> Verifica se servidor está rodando</p>
+              <p><strong>3. Testar Banco:</strong> Verifica conexão e estrutura</p>
+              <p><strong>4. Reset Admin:</strong> Recria usuário admin@vertttraue.com</p>
+              <p><strong>5. Criar Teste:</strong> Cria usuário único para teste</p>
               
               <div className="mt-2 p-2 bg-blue-100 rounded">
                 <p className="font-medium">Credenciais Padrão:</p>

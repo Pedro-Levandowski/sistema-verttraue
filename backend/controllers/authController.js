@@ -5,6 +5,159 @@ const pool = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vertttraue-secret-key-2024';
 
+// Inicializar banco de dados - criar tabelas se não existirem
+const initDatabase = async (req, res) => {
+  try {
+    console.log('🚀 === INICIALIZANDO BANCO DE DADOS ===');
+    
+    // Verificar conexão primeiro
+    await pool.query('SELECT NOW()');
+    console.log('✅ Conexão com PostgreSQL OK');
+
+    // Criar tabela usuarios se não existir
+    const createUsersTable = `
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        nome VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    
+    await pool.query(createUsersTable);
+    console.log('✅ Tabela usuarios criada/verificada');
+
+    // Verificar se usuário admin existe
+    const adminCheck = await pool.query('SELECT * FROM usuarios WHERE username = $1', ['admin@vertttraue.com']);
+    
+    if (adminCheck.rows.length === 0) {
+      console.log('👤 Criando usuário admin...');
+      const adminPassword = '123456';
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(adminPassword, saltRounds);
+      
+      await pool.query(
+        'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3)',
+        ['admin@vertttraue.com', passwordHash, 'Administrador']
+      );
+      console.log('✅ Usuário admin criado');
+    } else {
+      console.log('✅ Usuário admin já existe');
+    }
+
+    // Criar outras tabelas essenciais
+    const otherTables = [
+      `CREATE TABLE IF NOT EXISTS fornecedores (
+        id VARCHAR(20) PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        cidade VARCHAR(100),
+        contato VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+      
+      `CREATE TABLE IF NOT EXISTS afiliados (
+        id VARCHAR(20) PRIMARY KEY,
+        nome_completo VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        telefone VARCHAR(20),
+        comissao DECIMAL(5,2) DEFAULT 0,
+        chave_pix VARCHAR(255),
+        tipo_chave_pix VARCHAR(20),
+        ativo BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+      
+      `CREATE TABLE IF NOT EXISTS produtos (
+        id VARCHAR(20) PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        estoque_fisico INTEGER DEFAULT 0,
+        estoque_site INTEGER DEFAULT 0,
+        preco DECIMAL(10,2) NOT NULL,
+        preco_compra DECIMAL(10,2) NOT NULL,
+        fornecedor_id VARCHAR(20) REFERENCES fornecedores(id),
+        afiliado_id VARCHAR(20) REFERENCES afiliados(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+      
+      `CREATE TABLE IF NOT EXISTS afiliado_estoque (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        produto_id VARCHAR(20) REFERENCES produtos(id) ON DELETE CASCADE,
+        afiliado_id VARCHAR(20) REFERENCES afiliados(id) ON DELETE CASCADE,
+        quantidade INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(produto_id, afiliado_id)
+      );`,
+      
+      `CREATE TABLE IF NOT EXISTS vendas (
+        id VARCHAR(20) PRIMARY KEY,
+        data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        afiliado_id VARCHAR(20) REFERENCES afiliados(id),
+        total DECIMAL(10,2) NOT NULL,
+        tipo VARCHAR(20) DEFAULT 'online',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`,
+      
+      `CREATE TABLE IF NOT EXISTS venda_itens (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        venda_id VARCHAR(20) REFERENCES vendas(id) ON DELETE CASCADE,
+        produto_id VARCHAR(20) REFERENCES produtos(id),
+        quantidade INTEGER NOT NULL DEFAULT 1,
+        preco_unitario DECIMAL(10,2) NOT NULL,
+        subtotal DECIMAL(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`
+    ];
+
+    for (const tableSQL of otherTables) {
+      await pool.query(tableSQL);
+    }
+    
+    console.log('✅ Todas as tabelas criadas/verificadas');
+
+    // Verificar estrutura final
+    const tablesCheck = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+    
+    const userCount = await pool.query('SELECT COUNT(*) FROM usuarios');
+    
+    console.log('✅ === BANCO INICIALIZADO COM SUCESSO ===');
+    
+    res.json({
+      success: true,
+      message: 'Banco de dados inicializado com sucesso',
+      tables: tablesCheck.rows.map(t => t.table_name),
+      userCount: parseInt(userCount.rows[0].count),
+      adminCredentials: {
+        username: 'admin@vertttraue.com',
+        password: '123456'
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 === ERRO NA INICIALIZAÇÃO DO BANCO ===');
+    console.error('Erro:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao inicializar banco de dados',
+      details: error.message,
+      code: error.code
+    });
+  }
+};
+
 // Login
 const login = async (req, res) => {
   try {
@@ -19,14 +172,28 @@ const login = async (req, res) => {
     }
 
     console.log('🔍 Buscando usuário:', username);
-    console.log('🗄️ Testando conexão com banco...');
     
-    // Primeiro testar a conexão
-    const testConnection = await pool.query('SELECT NOW()');
-    console.log('✅ Conexão com banco OK:', testConnection.rows[0]);
+    // Primeiro verificar se a tabela existe
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'usuarios'
+      );
+    `);
     
-    // Buscar usuário no banco - usando tabela 'usuarios'
-    console.log('🔍 Executando query na tabela usuarios...');
+    if (!tableCheck.rows[0].exists) {
+      console.log('❌ Tabela usuarios não existe');
+      return res.status(503).json({ 
+        error: 'Tabela usuarios não encontrada',
+        details: 'Execute a inicialização do banco primeiro',
+        code: '42P01'
+      });
+    }
+    
+    console.log('✅ Tabela usuarios existe');
+    
+    // Buscar usuário no banco
     const userResult = await pool.query(
       'SELECT * FROM usuarios WHERE username = $1',
       [username]
@@ -107,7 +274,7 @@ const login = async (req, res) => {
     if (error.code === '42P01') {
       return res.status(503).json({ 
         error: 'Tabela usuarios não encontrada',
-        details: 'Execute o script de criação do banco',
+        details: 'Execute a inicialização do banco primeiro',
         code: error.code
       });
     }
@@ -153,10 +320,6 @@ const register = async (req, res) => {
 
     console.log('🔍 Verificando se usuário já existe:', username);
     
-    // Testar conexão primeiro
-    const testConnection = await pool.query('SELECT NOW()');
-    console.log('✅ Conexão OK para registro:', testConnection.rows[0]);
-    
     // Verificar se usuário já existe
     const existingUser = await pool.query(
       'SELECT id FROM usuarios WHERE username = $1',
@@ -194,11 +357,7 @@ const register = async (req, res) => {
 
   } catch (error) {
     console.error('💥 === ERRO NO REGISTRO ===');
-    console.error('Tipo do erro:', typeof error);
-    console.error('Nome do erro:', error.name);
-    console.error('Mensagem:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack completo:', error.stack);
+    console.error('Erro:', error);
     
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
       return res.status(503).json({ 
@@ -211,7 +370,7 @@ const register = async (req, res) => {
     if (error.code === '42P01') {
       return res.status(503).json({ 
         error: 'Tabela usuarios não encontrada',
-        details: 'Execute o script de criação do banco',
+        details: 'Execute a inicialização do banco primeiro',
         code: error.code
       });
     }
@@ -312,11 +471,7 @@ const testDatabase = async (req, res) => {
 
   } catch (error) {
     console.error('💥 === ERRO CRÍTICO NO TESTE DE BANCO ===');
-    console.error('Tipo do erro:', typeof error);
-    console.error('Nome do erro:', error.name);
-    console.error('Mensagem:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack completo:', error.stack);
+    console.error('Erro:', error);
     
     let errorResponse = {
       success: false,
@@ -362,10 +517,6 @@ const resetAdmin = async (req, res) => {
     const adminPassword = '123456';
     const adminNome = 'Administrador';
 
-    // Testar conexão primeiro
-    const testConnection = await pool.query('SELECT NOW()');
-    console.log('✅ Conexão OK para reset:', testConnection.rows[0]);
-
     // Hash da senha
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(adminPassword, saltRounds);
@@ -396,16 +547,20 @@ const resetAdmin = async (req, res) => {
 
   } catch (error) {
     console.error('💥 === ERRO AO RESETAR ADMIN ===');
-    console.error('Tipo do erro:', typeof error);
-    console.error('Nome do erro:', error.name);
-    console.error('Mensagem:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack completo:', error.stack);
+    console.error('Erro:', error);
     
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
       return res.status(503).json({ 
         error: 'Erro de conexão com banco de dados',
         details: 'Verifique se o PostgreSQL está rodando',
+        code: error.code
+      });
+    }
+    
+    if (error.code === '42P01') {
+      return res.status(503).json({ 
+        error: 'Tabela usuarios não encontrada',
+        details: 'Execute a inicialização do banco primeiro',
         code: error.code
       });
     }
@@ -430,10 +585,6 @@ const createUser = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ error: 'Username e password são obrigatórios' });
     }
-
-    // Testar conexão primeiro
-    const testConnection = await pool.query('SELECT NOW()');
-    console.log('✅ Conexão OK para criação:', testConnection.rows[0]);
 
     // Verificar se usuário já existe
     const existingUser = await pool.query(
@@ -470,16 +621,20 @@ const createUser = async (req, res) => {
 
   } catch (error) {
     console.error('💥 === ERRO AO CRIAR USUÁRIO ===');
-    console.error('Tipo do erro:', typeof error);
-    console.error('Nome do erro:', error.name);
-    console.error('Mensagem:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack completo:', error.stack);
+    console.error('Erro:', error);
     
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
       return res.status(503).json({ 
         error: 'Erro de conexão com banco de dados',
         details: 'Verifique se o PostgreSQL está rodando',
+        code: error.code
+      });
+    }
+    
+    if (error.code === '42P01') {
+      return res.status(503).json({ 
+        error: 'Tabela usuarios não encontrada',
+        details: 'Execute a inicialização do banco primeiro',
         code: error.code
       });
     }
@@ -493,6 +648,7 @@ const createUser = async (req, res) => {
 };
 
 module.exports = {
+  initDatabase,
   login,
   verifyToken,
   register,
