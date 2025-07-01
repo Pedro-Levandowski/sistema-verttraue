@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,10 +15,13 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting - CORRIGIDO para evitar too many requests
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100 // máximo 100 requests por IP por janela de tempo
+  windowMs: 5 * 60 * 1000, // 5 minutos (aumentado)
+  max: 1000, // máximo 1000 requests por IP (aumentado significativamente)
+  message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 

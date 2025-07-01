@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
 import { Package, Factory, Users, DollarSign, Settings, TrendingUp } from 'lucide-react';
-import Header from '../Layout/Header';
 import MenuCard from '../Layout/MenuCard';
 import { useProducts } from '../../hooks/useProducts';
 import { useSuppliers } from '../../hooks/useSuppliers';

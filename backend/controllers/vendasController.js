@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Listar todas as vendas
@@ -10,12 +9,9 @@ const getAllVendas = async (req, res) => {
       SELECT 
         v.*,
         a.nome_completo as afiliado_nome,
-        a.email as afiliado_email,
-        COUNT(vp.id) as total_itens
+        a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      LEFT JOIN venda_produtos vp ON v.id = vp.venda_id
-      GROUP BY v.id, a.nome_completo, a.email
       ORDER BY v.data_venda DESC
     `);
 
@@ -25,14 +21,14 @@ const getAllVendas = async (req, res) => {
     const vendas = result.rows.map(venda => ({
       id: venda.id,
       data: venda.data_venda,
-      tipo: venda.tipo_venda,
-      total: parseFloat(venda.valor_total),
+      tipo: venda.tipo || 'online',
+      total: parseFloat(venda.total || 0),
       afiliado: venda.afiliado_nome ? {
         id: venda.afiliado_id,
         nome_completo: venda.afiliado_nome,
         email: venda.afiliado_email
       } : null,
-      produtos: [] // será preenchido quando necessário
+      observacoes: venda.observacoes
     }));
 
     res.json(vendas);
@@ -65,21 +61,25 @@ const getVendaById = async (req, res) => {
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
 
-    // Buscar produtos da venda
-    const produtosResult = await pool.query(`
+    // Buscar itens da venda
+    const itensResult = await pool.query(`
       SELECT 
-        vp.*,
+        vi.*,
         p.nome as produto_nome,
-        p.descricao as produto_descricao
-      FROM venda_produtos vp
-      LEFT JOIN produtos p ON vp.produto_id = p.id
-      WHERE vp.venda_id = $1
-      ORDER BY vp.id
+        p.descricao as produto_descricao,
+        c.nome as conjunto_nome,
+        k.nome as kit_nome
+      FROM venda_itens vi
+      LEFT JOIN produtos p ON vi.produto_id = p.id
+      LEFT JOIN conjuntos c ON vi.conjunto_id = c.id
+      LEFT JOIN kits k ON vi.kit_id = k.id
+      WHERE vi.venda_id = $1
+      ORDER BY vi.id
     `, [id]);
 
     const venda = {
       ...vendaResult.rows[0],
-      produtos: produtosResult.rows
+      itens: itensResult.rows
     };
 
     console.log('✅ Venda encontrada:', venda.id);
@@ -157,7 +157,7 @@ const createVenda = async (req, res) => {
       }
 
       await client.query(`
-        INSERT INTO venda_produtos (
+        INSERT INTO venda_itens (
           venda_id, produto_id, conjunto_id, kit_id, quantidade, preco_unitario
         )
         VALUES ($1, $2, $3, $4, $5, $6)
