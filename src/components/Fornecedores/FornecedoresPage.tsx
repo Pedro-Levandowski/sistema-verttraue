@@ -10,20 +10,21 @@ import FornecedorModal from './FornecedorModal';
 import FornecedorProdutosModal from './FornecedorProdutosModal';
 import ConfirmModal from '../Layout/ConfirmModal';
 import { useSuppliers } from '../../hooks/useSuppliers';
-import { Supplier } from '../../types';
+import { Supplier, Product } from '../../types';
 
 interface FornecedoresPageProps {
   onBack: () => void;
 }
 
 const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
-  const { suppliers, loading, error, createSupplier, updateSupplier, deleteSupplier } = useSuppliers();
+  const { suppliers, loading, error, createSupplier, updateSupplier, deleteSupplier, fetchSupplierProducts } = useSuppliers();
   
   const [showModal, setShowModal] = useState(false);
   const [showProdutosModal, setShowProdutosModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [supplierProducts, setSupplierProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
@@ -52,15 +53,16 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
           console.log('✅ Fornecedor excluído com sucesso');
         } catch (error) {
           console.error('❌ Erro ao excluir fornecedor:', error);
-          alert('Erro ao excluir fornecedor. Verifique se não há produtos vinculados.');
         }
       }
     });
     setShowConfirmModal(true);
   };
 
-  const handleViewProducts = (supplier: Supplier) => {
+  const handleViewProducts = async (supplier: Supplier) => {
     setSelectedSupplier(supplier);
+    const products = await fetchSupplierProducts(supplier.id);
+    setSupplierProducts(products);
     setShowProdutosModal(true);
   };
 
@@ -85,7 +87,6 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
           setShowModal(false);
         } catch (error) {
           console.error('❌ Erro ao salvar fornecedor:', error);
-          alert('Erro ao salvar fornecedor. Verifique o console para mais detalhes.');
         }
       }
     });
@@ -231,6 +232,7 @@ const FornecedoresPage: React.FC<FornecedoresPageProps> = ({ onBack }) => {
         isOpen={showProdutosModal}
         onClose={() => setShowProdutosModal(false)}
         supplier={selectedSupplier}
+        products={supplierProducts}
       />
 
       <ConfirmModal

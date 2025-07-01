@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Supplier } from '../types';
-import { suppliersAPI } from '../services/api';
+import { Supplier, Product } from '../types';
+import { suppliersAPI, productsAPI } from '../services/api';
 
 export const useSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -51,6 +51,16 @@ export const useSuppliers = () => {
     }
   };
 
+  const fetchSupplierProducts = async (supplierId: string): Promise<Product[]> => {
+    try {
+      const products = await productsAPI.getAll();
+      return products.filter(p => p.fornecedor?.id === supplierId);
+    } catch (err) {
+      console.error('Erro ao buscar produtos do fornecedor:', err);
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchSuppliers();
   }, []);
@@ -63,5 +73,6 @@ export const useSuppliers = () => {
     createSupplier,
     updateSupplier,
     deleteSupplier,
+    fetchSupplierProducts,
   };
 };

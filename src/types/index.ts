@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   nome: string;
@@ -18,6 +17,7 @@ export interface Supplier {
   nome: string;
   cidade: string;
   contato?: string;
+  total_produtos?: number;
 }
 
 export interface Conjunto {
