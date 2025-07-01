@@ -56,7 +56,45 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowAfiliadoEstoqueModal(true);
   };
 
+  const handleAfiliadoEstoqueSave = async (productId: string, afiliadoId: string, quantidade: number) => {
+    try {
+      // Aqui você implementaria a lógica para atribuir estoque ao afiliado
+      // Por enquanto, vamos apenas simular a operação
+      console.log('Atribuindo estoque:', { productId, afiliadoId, quantidade });
+      
+      // Encontrar o produto e atualizar seu estoque
+      const product = products.find(p => p.id === productId);
+      if (product && product.estoque_site >= quantidade) {
+        const updatedProduct = {
+          ...product,
+          estoque_site: product.estoque_site - quantidade,
+          estoque_fisico: product.estoque_fisico + quantidade,
+          afiliado_estoque: [
+            ...(product.afiliado_estoque || []),
+            { afiliado_id: afiliadoId, quantidade }
+          ]
+        };
+        
+        await updateProduct(productId, updatedProduct);
+        console.log('✅ Estoque atribuído ao afiliado com sucesso');
+      } else {
+        throw new Error('Estoque insuficiente no site');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao atribuir estoque ao afiliado:', error);
+      alert('Erro ao atribuir estoque ao afiliado. Verifique o console para mais detalhes.');
+    }
+  };
+
   const handleSave = async (productData: any) => {
+    const confirmed = confirm(
+      editingProduct 
+        ? `Confirma a edição do produto "${editingProduct.nome}"?`
+        : 'Confirma a criação do novo produto?'
+    );
+    
+    if (!confirmed) return;
+
     try {
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
@@ -212,6 +250,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <AfiliadoEstoqueModal
         isOpen={showAfiliadoEstoqueModal}
         onClose={() => setShowAfiliadoEstoqueModal(false)}
+        onSave={handleAfiliadoEstoqueSave}
         product={selectedProduct}
         affiliates={affiliates}
       />
