@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,31 +49,75 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     onConfirm: () => void;
   } | null>(null);
 
-  const filteredProducts = products.filter(product =>
+  // Função para corrigir codificação de texto
+  const fixTextEncoding = (text: string | undefined): string => {
+    if (!text) return '';
+    return text
+      .replace(/Ã¡/g, 'á')
+      .replace(/Ã /g, 'à')
+      .replace(/Ã©/g, 'é')
+      .replace(/Ãª/g, 'ê')
+      .replace(/Ã­/g, 'í')
+      .replace(/Ã³/g, 'ó')
+      .replace(/Ãº/g, 'ú')
+      .replace(/Ã§/g, 'ç')
+      .replace(/Ã±/g, 'ñ')
+      .replace(/Ã¢/g, 'â')
+      .replace(/Ã´/g, 'ô')
+      .replace(/Ã¹/g, 'ù')
+      .replace(/Ã¨/g, 'è')
+      .replace(/Ã¬/g, 'ì')
+      .replace(/Ã²/g, 'ò')
+      .replace(/Ã¼/g, 'ü')
+      .replace(/Ã¤/g, 'ä')
+      .replace(/Ã¶/g, 'ö')
+      .replace(/Ã/g, 'Á')
+      .replace(/Ã/g, 'É');
+  };
+
+  // Aplicar correção aos dados
+  const fixedProducts = products.map(product => ({
+    ...product,
+    nome: fixTextEncoding(product.nome)
+  }));
+
+  const fixedKits = kits.map(kit => ({
+    ...kit,
+    nome: fixTextEncoding(kit.nome)
+  }));
+
+  const fixedConjuntos = conjuntos.map(conjunto => ({
+    ...conjunto,
+    nome: fixTextEncoding(conjunto.nome)
+  }));
+
+  const filteredProducts = fixedProducts.filter(product =>
     product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.fornecedor?.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const filteredKits = kits.filter(kit =>
+  const filteredKits = fixedKits.filter(kit =>
     kit.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     kit.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredConjuntos = conjuntos.filter(conjunto =>
+  const filteredConjuntos = fixedConjuntos.filter(conjunto =>
     conjunto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conjunto.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEdit = (product: Product) => {
+    console.log('🔧 Editando produto:', product.id);
     setEditingProduct(product);
     setShowModal(true);
   };
 
   const handleDelete = (product: Product) => {
+    console.log('🗑️ Solicitando exclusão do produto:', product.id);
     setConfirmAction({
       title: 'Confirmar Exclusão',
-      message: `Tem certeza que deseja excluir o produto "${product.nome}"? Esta ação não pode ser desfeita.`,
+      message: `Tem certeza que deseja excluir o produto "${fixTextEncoding(product.nome)}"? Esta ação não pode ser desfeita.`,
       onConfirm: async () => {
         try {
           await deleteProduct(product.id);
@@ -89,12 +132,14 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   };
 
   const handleViewDetails = (product: Product) => {
+    console.log('👁️ Visualizando detalhes do produto:', product.id);
     setSelectedProduct(product);
     setShowProductInfoModal(true);
   };
 
   const handleSave = async (productData: any) => {
     try {
+      console.log('💾 Salvando produto:', productData);
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
         console.log('✅ Produto atualizado com sucesso');
@@ -112,6 +157,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
   const handleKitSave = async (kitData: any) => {
     try {
+      console.log('💾 Salvando kit:', kitData);
       if (editingKit) {
         await updateKit(editingKit.id, kitData);
         console.log('✅ Kit atualizado com sucesso');
@@ -129,6 +175,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
   const handleConjuntoSave = async (conjuntoData: any) => {
     try {
+      console.log('💾 Salvando conjunto:', conjuntoData);
       if (editingConjunto) {
         await updateConjunto(editingConjunto.id, conjuntoData);
         console.log('✅ Conjunto atualizado com sucesso');
@@ -148,6 +195,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     if (!selectedProduct) return;
     
     try {
+      console.log('📦 Atualizando estoque do afiliado:', { affiliateId, quantity });
       await estoqueAPI.updateAfiliadoEstoque(selectedProduct.id, affiliateId, quantity);
       console.log('✅ Estoque do afiliado atualizado');
       // Refresh products data
@@ -158,6 +206,29 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     }
   };
 
+  // Renderização com tratamento de erro
+  if (productsError) {
+    console.error('❌ Erro na página de estoque:', productsError);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
+        <Header title="Gestão de Estoque" onBack={onBack} />
+        <div className="container mx-auto p-6">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertDescription className="text-red-700">
+              ❌ Erro ao carregar dados do estoque: {productsError}
+            </AlertDescription>
+          </Alert>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+          >
+            Tentar Novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
       <Header title="Gestão de Estoque" onBack={onBack} />
@@ -166,14 +237,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         {productsLoading && (
           <Alert className="mb-4">
             <AlertDescription>Carregando produtos do banco de dados...</AlertDescription>
-          </Alert>
-        )}
-
-        {productsError && (
-          <Alert className="mb-4 border-red-200 bg-red-50">
-            <AlertDescription className="text-red-700">
-              ❌ Erro ao conectar com o backend: {productsError}
-            </AlertDescription>
           </Alert>
         )}
 
@@ -201,21 +264,30 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               className="flex-1"
             />
             <Button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                console.log('➕ Abrindo modal de novo produto');
+                setShowModal(true);
+              }}
               className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={productsLoading}
             >
               Novo Produto
             </Button>
             <Button
-              onClick={() => setShowKitModal(true)}
+              onClick={() => {
+                console.log('➕ Abrindo modal de novo kit');
+                setShowKitModal(true);
+              }}
               className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={kitsLoading}
             >
               Novo Kit
             </Button>
             <Button
-              onClick={() => setShowConjuntoModal(true)}
+              onClick={() => {
+                console.log('➕ Abrindo modal de novo conjunto');
+                setShowConjuntoModal(true);
+              }}
               className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={conjuntosLoading}
             >
@@ -226,10 +298,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           <TabsContent value="produtos">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
-                Produtos em Estoque ({products.length})
+                Produtos em Estoque ({filteredProducts.length})
               </h2>
               
-              {products.length === 0 && !productsLoading ? (
+              {filteredProducts.length === 0 && !productsLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum produto encontrado no banco de dados.</p>
                   <p className="text-sm">Adicione o primeiro produto clicando no botão acima.</p>
@@ -302,10 +374,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           <TabsContent value="kits">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
-                Kits Disponíveis ({kits.length})
+                Kits Disponíveis ({filteredKits.length})
               </h2>
 
-              {kits.length === 0 && !kitsLoading ? (
+              {filteredKits.length === 0 && !kitsLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum kit encontrado no banco de dados.</p>
                   <p className="text-sm">Adicione o primeiro kit clicando no botão acima.</p>
@@ -381,10 +453,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           <TabsContent value="conjuntos">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
-                Conjuntos Disponíveis ({conjuntos.length})
+                Conjuntos Disponíveis ({filteredConjuntos.length})
               </h2>
 
-              {conjuntos.length === 0 && !conjuntosLoading ? (
+              {filteredConjuntos.length === 0 && !conjuntosLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum conjunto encontrado no banco de dados.</p>
                   <p className="text-sm">Adicione o primeiro conjunto clicando no botão acima.</p>
@@ -478,7 +550,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         onSave={handleKitSave}
         kit={editingKit}
-        products={products}
+        products={fixedProducts}
       />
 
       <ConjuntoModal
@@ -489,7 +561,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         onSave={handleConjuntoSave}
         conjunto={editingConjunto}
-        products={products}
+        products={fixedProducts}
       />
 
       <AfiliadoEstoqueModal

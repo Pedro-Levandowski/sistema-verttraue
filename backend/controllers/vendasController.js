@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Listar todas as vendas
@@ -18,6 +17,18 @@ const getVendas = async (req, res) => {
       console.log('⚠️ Tabela vendas não existe ainda');
       return res.json([]);
     }
+
+    // Verificar se existem dados na tabela
+    const countQuery = 'SELECT COUNT(*) as total FROM vendas';
+    const countResult = await pool.query(countQuery);
+    const totalVendas = parseInt(countResult.rows[0].total);
+    
+    console.log(`📈 Total de vendas no banco: ${totalVendas}`);
+    
+    if (totalVendas === 0) {
+      console.log('ℹ️ Nenhuma venda encontrada, retornando array vazio');
+      return res.json([]);
+    }
     
     const query = `
       SELECT 
@@ -31,18 +42,13 @@ const getVendas = async (req, res) => {
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
       ORDER BY v.created_at DESC
+      LIMIT 100
     `;
     
     console.log('🔍 Executando query:', query);
     const result = await pool.query(query);
     
     console.log(`✅ Vendas encontradas: ${result.rows.length}`);
-    
-    // Se não há vendas, retornar array vazio
-    if (result.rows.length === 0) {
-      console.log('ℹ️ Nenhuma venda encontrada, retornando array vazio');
-      return res.json([]);
-    }
     
     // Buscar itens para cada venda
     const vendasComItens = await Promise.all(
@@ -90,15 +96,20 @@ const getVendas = async (req, res) => {
     console.error('Code:', error.code);
     
     // Se for erro de tabela não existir, retornar array vazio
-    if (error.code === '42P01') {
+    if (error.code === '42P01' || error.message.includes('does not exist')) {
       console.log('⚠️ Tabela vendas não existe, retornando array vazio');
       return res.json([]);
     }
     
+    // Retornar erro mais específico
+    const errorMessage = error.code === 'ECONNREFUSED' ? 
+      'Erro de conexão com o banco de dados' : 
+      error.message;
+    
     res.status(500).json({ 
       error: 'Erro ao buscar vendas',
-      details: error.message,
-      code: error.code
+      details: errorMessage,
+      code: error.code || 'UNKNOWN'
     });
   }
 };
