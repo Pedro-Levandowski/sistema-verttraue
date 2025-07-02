@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,33 +28,35 @@ interface EstoquePageProps {
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   console.log('🚀 [EstoquePage] Inicializando componente...');
 
-  // Hooks com tratamento de erro seguro
-  const { 
-    products = [], 
-    loading: productsLoading = false, 
-    error: productsError, 
-    createProduct, 
-    updateProduct, 
-    deleteProduct 
-  } = useProducts() || {};
+  // Hooks com fallbacks seguros
+  const productsHook = useProducts();
+  const suppliersHook = useSuppliers();
+  const affiliatesHook = useAffiliates();
+  const kitsHook = useKits();
+  const conjuntosHook = useConjuntos();
 
-  const { suppliers = [] } = useSuppliers() || {};
-  const { affiliates = [] } = useAffiliates() || {};
-  const { 
-    kits = [], 
-    loading: kitsLoading = false, 
-    createKit, 
-    updateKit, 
-    deleteKit 
-  } = useKits() || {};
+  // Garantir que sempre temos valores válidos
+  const products = productsHook?.products || [];
+  const productsLoading = productsHook?.loading || false;
+  const productsError = productsHook?.error || null;
+  const createProduct = productsHook?.createProduct;
+  const updateProduct = productsHook?.updateProduct;
+  const deleteProduct = productsHook?.deleteProduct;
 
-  const { 
-    conjuntos = [], 
-    loading: conjuntosLoading = false, 
-    createConjunto, 
-    updateConjunto, 
-    deleteConjunto 
-  } = useConjuntos() || {};
+  const suppliers = suppliersHook?.suppliers || [];
+  const affiliates = affiliatesHook?.affiliates || [];
+  
+  const kits = kitsHook?.kits || [];
+  const kitsLoading = kitsHook?.loading || false;
+  const createKit = kitsHook?.createKit;
+  const updateKit = kitsHook?.updateKit;
+  const deleteKit = kitsHook?.deleteKit;
+
+  const conjuntos = conjuntosHook?.conjuntos || [];
+  const conjuntosLoading = conjuntosHook?.loading || false;
+  const createConjunto = conjuntosHook?.createConjunto;
+  const updateConjunto = conjuntosHook?.updateConjunto;
+  const deleteConjunto = conjuntosHook?.deleteConjunto;
 
   // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
@@ -75,31 +78,31 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   } | null>(null);
 
   console.log('📊 [EstoquePage] Estado atual:', {
-    productsCount: products?.length || 0,
+    productsCount: products.length,
     productsLoading,
     productsError,
-    kitsCount: kits?.length || 0,
-    conjuntosCount: conjuntos?.length || 0
+    kitsCount: kits.length,
+    conjuntosCount: conjuntos.length
   });
 
   // Filtros seguros
-  const filteredProducts = Array.isArray(products) ? products.filter(product =>
+  const filteredProducts = products.filter(product =>
     product?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product?.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) : [];
+  );
 
-  const filteredKits = Array.isArray(kits) ? kits.filter(kit =>
+  const filteredKits = kits.filter(kit =>
     kit?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     kit?.id?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  );
 
-  const filteredConjuntos = Array.isArray(conjuntos) ? conjuntos.filter(conjunto =>
+  const filteredConjuntos = conjuntos.filter(conjunto =>
     conjunto?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conjunto?.id?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  );
 
-  // Handlers com tratamento de erro
+  // Handlers com tratamento de erro melhorado
   const handleEdit = (product: Product) => {
     try {
       console.log('🔧 [EstoquePage] Editando produto:', product?.id);
@@ -107,6 +110,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       setShowModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao editar produto:', error);
+      alert('Erro ao abrir editor de produto');
     }
   };
 
@@ -121,16 +125,19 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             if (deleteProduct) {
               await deleteProduct(product.id);
               console.log('✅ [EstoquePage] Produto excluído com sucesso');
+            } else {
+              throw new Error('Função de deletar não disponível');
             }
           } catch (error) {
             console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
-            alert('Erro ao excluir produto. Verifique o console para mais detalhes.');
+            alert('Erro ao excluir produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
           }
         }
       });
       setShowConfirmModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao preparar exclusão:', error);
+      alert('Erro ao preparar exclusão do produto');
     }
   };
 
@@ -141,6 +148,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       setShowProductInfoModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao visualizar detalhes:', error);
+      alert('Erro ao visualizar detalhes do produto');
     }
   };
 
@@ -153,16 +161,17 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       } else if (createProduct) {
         await createProduct(productData);
         console.log('✅ [EstoquePage] Produto criado com sucesso');
+      } else {
+        throw new Error('Funções de produto não disponíveis');
       }
       setEditingProduct(null);
       setShowModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar produto:', error);
-      alert('Erro ao salvar produto. Verifique o console para mais detalhes.');
+      alert('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
-  // Outros handlers similares...
   const handleKitSave = async (kitData: any) => {
     try {
       console.log('💾 [EstoquePage] Salvando kit:', kitData);
@@ -170,12 +179,14 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         await updateKit(editingKit.id, kitData);
       } else if (createKit) {
         await createKit(kitData);
+      } else {
+        throw new Error('Funções de kit não disponíveis');
       }
       setEditingKit(null);
       setShowKitModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar kit:', error);
-      alert('Erro ao salvar kit. Verifique o console para mais detalhes.');
+      alert('Erro ao salvar kit: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -186,12 +197,14 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         await updateConjunto(editingConjunto.id, conjuntoData);
       } else if (createConjunto) {
         await createConjunto(conjuntoData);
+      } else {
+        throw new Error('Funções de conjunto não disponíveis');
       }
       setEditingConjunto(null);
       setShowConjuntoModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar conjunto:', error);
-      alert('Erro ao salvar conjunto. Verifique o console para mais detalhes.');
+      alert('Erro ao salvar conjunto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -205,11 +218,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       window.location.reload();
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao atualizar estoque do afiliado:', error);
-      alert('Erro ao atualizar estoque do afiliado');
+      alert('Erro ao atualizar estoque do afiliado: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
-  // Tratamento de erro crítico
+  // Tratamento de erro crítico com mais informações
   if (productsError) {
     console.error('❌ [EstoquePage] Erro crítico na página de estoque:', productsError);
     return (
@@ -221,12 +234,35 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               ❌ Erro ao carregar dados do estoque: {productsError}
             </AlertDescription>
           </Alert>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 bg-blue-600 hover:bg-blue-700"
-          >
-            Tentar Novamente
-          </Button>
+          <div className="mt-4 space-x-2">
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Recarregar Página
+            </Button>
+            <Button 
+              onClick={onBack} 
+              variant="outline"
+            >
+              Voltar ao Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar se todos os hooks carregaram
+  if (!productsHook || !suppliersHook || !affiliatesHook || !kitsHook || !conjuntosHook) {
+    console.log('⏳ [EstoquePage] Aguardando hooks inicializarem...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <Header title="Gestão de Estoque" onBack={onBack} />
+        <div className="container mx-auto p-6">
+          <Alert>
+            <AlertDescription>Inicializando sistema de estoque...</AlertDescription>
+          </Alert>
         </div>
       </div>
     );

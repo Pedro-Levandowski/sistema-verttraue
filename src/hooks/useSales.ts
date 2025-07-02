@@ -16,9 +16,8 @@ export const useSales = () => {
       
       console.log('🔄 [useSales] Fazendo chamada para API...');
       const data = await salesAPI.getAll();
-      console.log('✅ [useSales] Dados recebidos:', data);
+      console.log('✅ [useSales] Dados recebidos da API:', data);
       
-      // Garantir que sempre temos um array válido
       if (Array.isArray(data)) {
         setSales(data);
         console.log(`✅ [useSales] ${data.length} vendas carregadas com sucesso`);
@@ -29,12 +28,12 @@ export const useSales = () => {
     } catch (err) {
       console.error('❌ [useSales] Erro capturado:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar vendas';
-      console.error('❌ [useSales] Mensagem de erro:', errorMessage);
+      console.error('❌ [useSales] Mensagem de erro processada:', errorMessage);
       setError(errorMessage);
-      setSales([]); // Sempre garantir array vazio em caso de erro
+      setSales([]);
     } finally {
       setLoading(false);
-      console.log('🏁 [useSales] Busca finalizada');
+      console.log('🏁 [useSales] Busca de vendas finalizada');
     }
   };
 
@@ -77,7 +76,7 @@ export const useSales = () => {
   };
 
   useEffect(() => {
-    console.log('🚀 [useSales] Inicializando hook...');
+    console.log('🚀 [useSales] Inicializando hook de vendas...');
     fetchSales();
   }, []);
 

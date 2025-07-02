@@ -18,7 +18,6 @@ export const useProducts = () => {
       const data = await productsAPI.getAll();
       console.log('✅ [useProducts] Dados recebidos:', data);
       
-      // Garantir que sempre temos um array válido
       if (Array.isArray(data)) {
         setProducts(data);
         console.log(`✅ [useProducts] ${data.length} produtos carregados com sucesso`);
@@ -31,7 +30,7 @@ export const useProducts = () => {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar produtos';
       console.error('❌ [useProducts] Mensagem de erro:', errorMessage);
       setError(errorMessage);
-      setProducts([]); // Sempre garantir array vazio em caso de erro
+      setProducts([]);
     } finally {
       setLoading(false);
       console.log('🏁 [useProducts] Busca finalizada');

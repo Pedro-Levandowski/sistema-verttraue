@@ -1,73 +1,96 @@
-
 const pool = require('../config/database');
 
-// Listar todas as vendas - versão simplificada
+// Listar todas as vendas - versão robusta
 const getVendas = async (req, res) => {
-  console.log('📊 [Controller] === BUSCANDO VENDAS (SIMPLIFICADO) ===');
+  console.log('📊 [VendasController] === BUSCANDO VENDAS ===');
   
   try {
-    // Primeiro, verificar se conseguimos conectar no banco
-    console.log('🔍 [Controller] Testando conexão com banco...');
-    await pool.query('SELECT 1');
-    console.log('✅ [Controller] Conexão com banco OK');
+    // Teste de conexão
+    console.log('🔍 [VendasController] Testando conexão com banco...');
+    await pool.query('SELECT 1 as test');
+    console.log('✅ [VendasController] Conexão com banco OK');
 
     // Verificar se tabela vendas existe
-    console.log('🔍 [Controller] Verificando se tabela vendas existe...');
-    const tableCheck = await pool.query(`
+    console.log('🔍 [VendasController] Verificando se tabela vendas existe...');
+    const tableExistsQuery = `
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
-        WHERE table_name = 'vendas'
-      );
-    `);
-    
-    if (!tableCheck.rows[0].exists) {
-      console.log('⚠️ [Controller] Tabela vendas não existe, retornando array vazio');
-      return res.json([]);
-    }
-    console.log('✅ [Controller] Tabela vendas existe');
-
-    // Buscar vendas básicas primeiro
-    console.log('🔍 [Controller] Buscando vendas básicas...');
-    const basicQuery = `
-      SELECT 
-        id,
-        data_venda,
-        valor_total,
-        observacoes,
-        created_at,
-        afiliado_id
-      FROM vendas 
-      ORDER BY created_at DESC 
-      LIMIT 50
+        WHERE table_schema = 'public' 
+        AND table_name = 'vendas'
+      ) as exists;
     `;
     
-    const result = await pool.query(basicQuery);
-    console.log(`✅ [Controller] ${result.rows.length} vendas encontradas`);
+    const tableResult = await pool.query(tableExistsQuery);
+    console.log('🔍 [VendasController] Resultado verificação tabela:', tableResult.rows[0]);
     
-    // Retornar dados simples
-    const vendas = result.rows.map(venda => ({
-      ...venda,
-      afiliado_nome: null, // Simplificado por enquanto
-      afiliado_email: null,
-      itens: [] // Simplificado por enquanto
+    if (!tableResult.rows[0].exists) {
+      console.log('⚠️ [VendasController] Tabela vendas não existe, retornando array vazio');
+      return res.json([]);
+    }
+
+    // Contar registros primeiro
+    console.log('🔍 [VendasController] Contando vendas...');
+    const countResult = await pool.query('SELECT COUNT(*) as total FROM vendas');
+    const total = parseInt(countResult.rows[0].total);
+    console.log(`📊 [VendasController] Total de vendas no banco: ${total}`);
+
+    // Buscar vendas básicas
+    console.log('🔍 [VendasController] Buscando vendas...');
+    const vendasQuery = `
+      SELECT 
+        v.id,
+        v.data_venda,
+        v.valor_total,
+        v.observacoes,
+        v.created_at,
+        v.afiliado_id,
+        a.nome as afiliado_nome,
+        a.email as afiliado_email
+      FROM vendas v
+      LEFT JOIN afiliados a ON v.afiliado_id = a.id
+      ORDER BY v.created_at DESC 
+      LIMIT 100
+    `;
+    
+    const vendasResult = await pool.query(vendasQuery);
+    console.log(`✅ [VendasController] ${vendasResult.rows.length} vendas encontradas`);
+    
+    // Processar dados
+    const vendas = vendasResult.rows.map(venda => ({
+      id: venda.id,
+      data_venda: venda.data_venda,
+      valor_total: parseFloat(venda.valor_total) || 0,
+      observacoes: venda.observacoes,
+      created_at: venda.created_at,
+      afiliado_id: venda.afiliado_id,
+      afiliado_nome: venda.afiliado_nome,
+      afiliado_email: venda.afiliado_email,
+      itens: [] // Por enquanto vazio para simplicidade
     }));
     
-    console.log('✅ [Controller] Retornando vendas processadas');
+    console.log('✅ [VendasController] Retornando vendas processadas');
+    console.log('📤 [VendasController] Amostra de dados:', vendas.slice(0, 2));
+    
     res.json(vendas);
     
   } catch (error) {
-    console.error('❌ [Controller] === ERRO COMPLETO ===');
-    console.error('❌ [Controller] Erro:', error);
-    console.error('❌ [Controller] Message:', error.message);
-    console.error('❌ [Controller] Code:', error.code);
-    console.error('❌ [Controller] Stack:', error.stack);
+    console.error('❌ [VendasController] === ERRO COMPLETO ===');
+    console.error('❌ [VendasController] Tipo do erro:', typeof error);
+    console.error('❌ [VendasController] Erro:', error);
+    console.error('❌ [VendasController] Message:', error.message);
+    console.error('❌ [VendasController] Code:', error.code);
+    console.error('❌ [VendasController] Stack:', error.stack);
     
-    // Resposta de erro mais clara
-    res.status(500).json({ 
+    // Resposta de erro detalhada
+    const errorResponse = {
       error: 'Erro ao buscar vendas',
       details: error.message || 'Erro interno do servidor',
-      code: error.code || 'UNKNOWN'
-    });
+      code: error.code || 'UNKNOWN',
+      timestamp: new Date().toISOString()
+    };
+    
+    console.error('📤 [VendasController] Enviando erro:', errorResponse);
+    res.status(500).json(errorResponse);
   }
 };
 
