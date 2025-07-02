@@ -12,8 +12,9 @@ const getVendas = async (req, res) => {
         v.data_venda,
         v.valor_total,
         v.observacoes,
+        v.afiliado_id,
         v.created_at,
-        a.nome as afiliado_nome,
+        a.nome_completo as afiliado_nome,
         a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
@@ -42,7 +43,7 @@ const getVendaById = async (req, res) => {
     const vendaQuery = `
       SELECT 
         v.*,
-        a.nome as afiliado_nome,
+        a.nome_completo as afiliado_nome,
         a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
@@ -94,8 +95,9 @@ const getVendasPorPeriodo = async (req, res) => {
         v.data_venda,
         v.valor_total,
         v.observacoes,
+        v.afiliado_id,
         v.created_at,
-        a.nome as afiliado_nome,
+        a.nome_completo as afiliado_nome,
         a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
@@ -151,16 +153,16 @@ const createVenda = async (req, res) => {
     `;
     
     const vendaResult = await client.query(vendaQuery, [
-      afiliado_id,
+      afiliado_id || null,
       data_venda,
       valor_total,
-      observacoes
+      observacoes || null
     ]);
     
     const venda = vendaResult.rows[0];
     console.log('✅ Venda criada:', venda.id);
     
-    // Inserir itens da venda
+    // Inserir itens da venda se existirem
     if (itens && itens.length > 0) {
       for (const item of itens) {
         const itemQuery = `
@@ -209,10 +211,10 @@ const updateVenda = async (req, res) => {
     `;
     
     const result = await pool.query(query, [
-      afiliado_id,
+      afiliado_id || null,
       data_venda,
       valor_total,
-      observacoes,
+      observacoes || null,
       id
     ]);
     

@@ -31,7 +31,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredSales = sales.filter(sale =>
-    sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (sale.id && sale.id.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
     (sale.afiliado_nome && sale.afiliado_nome.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -109,7 +109,6 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
                   <tr className="border-b">
                     <th className="text-left p-2">ID Venda</th>
                     <th className="text-left p-2">Data</th>
-                    <th className="text-left p-2">Tipo</th>
                     <th className="text-left p-2">Afiliado</th>
                     <th className="text-left p-2">Total</th>
                     <th className="text-left p-2">Ações</th>
@@ -122,14 +121,9 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
                       <td className="p-2">
                         {sale.data_venda ? new Date(sale.data_venda).toLocaleDateString('pt-BR') : 'N/A'}
                       </td>
-                      <td className="p-2">
-                        <Badge variant={sale.tipo === 'online' ? 'default' : 'secondary'}>
-                          {sale.tipo === 'online' ? 'Online' : 'Física'}
-                        </Badge>
-                      </td>
                       <td className="p-2">{sale.afiliado_nome || '-'}</td>
                       <td className="p-2 font-bold text-vertttraue-primary">
-                        R$ {sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {(sale.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="p-2">
                         <Button 
