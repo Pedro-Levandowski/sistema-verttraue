@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Gift, Layers } from 'lucide-react';
+import { Package, Gift, Layers, Eye, Trash2, Edit } from 'lucide-react';
 import Header from '../Layout/Header';
 import ProdutoModal from './ProdutoModal';
 import KitModal from './KitModal';
@@ -28,9 +28,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
   const { suppliers } = useSuppliers();
   const { affiliates } = useAffiliates();
-  const { kits, loading: kitsLoading, createKit, updateKit, deleteKit } = useKits();
-  const { conjuntos, loading: conjuntosLoading, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
-  
+  const { kits, loading: kitsLoading, error: kitsError, createKit, updateKit } = useKits();
+  const { conjuntos, loading: conjuntosLoading, error: conjuntosError, createConjunto, updateConjunto } = useConjuntos();
+
+  const [activeTab, setActiveTab] = useState('produtos');
   const [showModal, setShowModal] = useState(false);
   const [showKitModal, setShowKitModal] = useState(false);
   const [showConjuntoModal, setShowConjuntoModal] = useState(false);
@@ -42,7 +43,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const [editingConjunto, setEditingConjunto] = useState<Conjunto | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('produtos');
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     message: string;
@@ -52,7 +52,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const filteredProducts = products.filter(product =>
     product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.fornecedor?.nome || '').toLowerCase().includes(searchTerm.toLowerCase())
+    product.fornecedor?.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredKits = kits.filter(kit =>
@@ -80,49 +80,21 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           console.log('✅ Produto excluído com sucesso');
         } catch (error) {
           console.error('❌ Erro ao excluir produto:', error);
-          alert('Erro ao excluir produto. Verifique se não há vendas vinculadas.');
+          alert('Erro ao excluir produto. Verifique o console para mais detalhes.');
         }
       }
     });
     setShowConfirmModal(true);
   };
 
-  const handleViewInfo = (product: Product) => {
+  const handleViewDetails = (product: Product) => {
     setSelectedProduct(product);
     setShowProductInfoModal(true);
   };
 
-  const handleManageAfiliado = (product: Product) => {
+  const handleManageAffiliateStock = (product: Product) => {
     setSelectedProduct(product);
     setShowAfiliadoEstoqueModal(true);
-  };
-
-  const handleAfiliadoEstoqueSave = async (productId: string, afiliadoId: string, quantidade: number) => {
-    try {
-      console.log('🔄 Iniciando atribuição de estoque ao afiliado:', { productId, afiliadoId, quantidade });
-      
-      // Usar a API correta para atualizar estoque do afiliado
-      await estoqueAPI.updateAfiliadoEstoque(productId, afiliadoId, quantidade);
-      
-      // Atualizar o produto local
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        const updatedProduct = {
-          ...product,
-          estoque_site: Math.max(0, product.estoque_site - quantidade),
-          afiliado_estoque: [
-            ...(product.afiliado_estoque || []).filter(ae => ae.afiliado_id !== afiliadoId),
-            { afiliado_id: afiliadoId, quantidade }
-          ]
-        };
-        
-        await updateProduct(productId, updatedProduct);
-        console.log('✅ Estoque atribuído ao afiliado com sucesso');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao atribuir estoque ao afiliado:', error);
-      alert('Erro ao atribuir estoque ao afiliado. Verifique o console para mais detalhes.');
-    }
   };
 
   const handleSave = async (productData: any) => {
@@ -138,8 +110,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             await updateProduct(editingProduct.id, productData);
             console.log('✅ Produto atualizado com sucesso');
           } else {
-            const newId = `PROD-${Date.now()}`;
-            await createProduct({ ...productData, id: newId });
+            await createProduct(productData);
             console.log('✅ Produto criado com sucesso');
           }
           setEditingProduct(null);
@@ -207,14 +178,28 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowConfirmModal(true);
   };
 
+  const handleUpdateAffiliateStock = async (affiliateId: string, quantity: number) => {
+    if (!selectedProduct) return;
+    
+    try {
+      await estoqueAPI.updateAfiliadoEstoque(selectedProduct.id, affiliateId, quantity);
+      console.log('✅ Estoque do afiliado atualizado');
+      // Refresh products data
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Erro ao atualizar estoque do afiliado:', error);
+      alert('Erro ao atualizar estoque do afiliado');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
       <Header title="Gestão de Estoque" onBack={onBack} />
 
       <div className="container mx-auto p-6">
-        {(productsLoading || kitsLoading || conjuntosLoading) && (
+        {productsLoading && (
           <Alert className="mb-4">
-            <AlertDescription>Carregando dados do banco de dados...</AlertDescription>
+            <AlertDescription>Carregando produtos do banco de dados...</AlertDescription>
           </Alert>
         )}
 
@@ -227,66 +212,49 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="produtos" className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Produtos ({products.length})
+          <TabsList className="w-full flex justify-center">
+            <TabsTrigger value="produtos" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+              <Package className="w-4 h-4 mr-2" />
+              Produtos
             </TabsTrigger>
-            <TabsTrigger value="kits" className="flex items-center gap-2">
-              <Gift className="w-4 h-4" />
-              Kits ({kits.length})
+            <TabsTrigger value="kits" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+              <Gift className="w-4 h-4 mr-2" />
+              Kits
             </TabsTrigger>
-            <TabsTrigger value="conjuntos" className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Conjuntos ({conjuntos.length})
+            <TabsTrigger value="conjuntos" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+              <Layers className="w-4 h-4 mr-2" />
+              Conjuntos
             </TabsTrigger>
           </TabsList>
 
           <div className="flex flex-col md:flex-row gap-4 my-6">
             <Input
-              placeholder="Buscar..."
+              placeholder="Buscar produtos, kits ou conjuntos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
             />
-            <div className="flex gap-2">
-              {activeTab === 'produtos' && (
-                <Button
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setShowModal(true);
-                  }}
-                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-                  disabled={productsLoading}
-                >
-                  Adicionar Produto
-                </Button>
-              )}
-              {activeTab === 'kits' && (
-                <Button
-                  onClick={() => {
-                    setEditingKit(null);
-                    setShowKitModal(true);
-                  }}
-                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-                  disabled={kitsLoading}
-                >
-                  Criar Kit
-                </Button>
-              )}
-              {activeTab === 'conjuntos' && (
-                <Button
-                  onClick={() => {
-                    setEditingConjunto(null);
-                    setShowConjuntoModal(true);
-                  }}
-                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-                  disabled={conjuntosLoading}
-                >
-                  Criar Conjunto
-                </Button>
-              )}
-            </div>
+            <Button
+              onClick={() => setShowModal(true)}
+              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              disabled={productsLoading}
+            >
+              Novo Produto
+            </Button>
+            <Button
+              onClick={() => setShowKitModal(true)}
+              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              disabled={kitsLoading}
+            >
+              Novo Kit
+            </Button>
+            <Button
+              onClick={() => setShowConjuntoModal(true)}
+              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              disabled={conjuntosLoading}
+            >
+              Novo Conjunto
+            </Button>
           </div>
 
           <TabsContent value="produtos">
@@ -308,11 +276,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                         <th className="text-left p-3">ID</th>
                         <th className="text-left p-3">Nome</th>
                         <th className="text-left p-3">Fornecedor</th>
-                        <th className="text-left p-3">Estoque Site</th>
-                        <th className="text-left p-3">Estoque Físico</th>
-                        <th className="text-left p-3">Preço Venda</th>
-                        <th className="text-left p-3">Preço Compra</th>
-                        <th className="text-left p-3">Status</th>
+                        <th className="text-left p-3">Estoque</th>
+                        <th className="text-left p-3">Preço</th>
                         <th className="text-left p-3">Ações</th>
                       </tr>
                     </thead>
@@ -323,40 +288,23 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                           <td className="p-3 font-semibold">{product.nome}</td>
                           <td className="p-3">{product.fornecedor?.nome || 'N/A'}</td>
                           <td className="p-3">
-                            <Badge variant={product.estoque_site < 3 ? "destructive" : "default"}>
-                              {product.estoque_site}
-                            </Badge>
+                            <div className="flex gap-2">
+                              <Badge variant="outline">F: {product.estoque_fisico}</Badge>
+                              <Badge variant="outline">S: {product.estoque_site}</Badge>
+                            </div>
                           </td>
-                          <td className="p-3">{product.estoque_fisico}</td>
                           <td className="p-3 font-bold text-vertttraue-primary">
                             R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="p-3">
-                            R$ {product.preco_compra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="p-3">
-                            <Badge variant={product.estoque_site > 0 ? "default" : "secondary"}>
-                              {product.estoque_site > 0 ? 'Disponível' : 'Esgotado'}
-                            </Badge>
                           </td>
                           <td className="p-3">
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleViewInfo(product)}
-                                className="hover:bg-blue-500 hover:text-white text-xs"
-                                title="Ver informações"
+                                onClick={() => handleViewDetails(product)}
+                                className="hover:bg-blue-50 hover:border-blue-300 text-xs"
                               >
                                 <Eye className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleManageAfiliado(product)}
-                                className="hover:bg-vertttraue-primary hover:text-white text-xs"
-                              >
-                                Afiliados
                               </Button>
                               <Button
                                 size="sm"
@@ -364,7 +312,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                 onClick={() => handleEdit(product)}
                                 className="hover:bg-vertttraue-primary hover:text-white text-xs"
                               >
-                                Editar
+                                <Edit className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
@@ -390,11 +338,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
                 Kits Disponíveis ({kits.length})
               </h2>
-              
+
               {kits.length === 0 && !kitsLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum kit encontrado no banco de dados.</p>
-                  <p className="text-sm">Crie o primeiro kit clicando no botão acima.</p>
+                  <p className="text-sm">Adicione o primeiro kit clicando no botão acima.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -403,9 +351,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                       <tr className="border-b">
                         <th className="text-left p-3">ID</th>
                         <th className="text-left p-3">Nome</th>
-                        <th className="text-left p-3">Descrição</th>
                         <th className="text-left p-3">Preço</th>
-                        <th className="text-left p-3">Total Produtos</th>
+                        <th className="text-left p-3">Estoque</th>
                         <th className="text-left p-3">Ações</th>
                       </tr>
                     </thead>
@@ -414,48 +361,39 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                         <tr key={kit.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 font-mono text-xs">{kit.id}</td>
                           <td className="p-3 font-semibold">{kit.nome}</td>
-                          <td className="p-3">{kit.descricao || 'N/A'}</td>
                           <td className="p-3 font-bold text-vertttraue-primary">
                             R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3">
-                            <Badge>{kit.total_produtos || 0}</Badge>
-                          </td>
+                          <td className="p-3">{kit.estoque_disponivel}</td>
                           <td className="p-3">
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
-                                  setEditingKit(kit);
-                                  setShowKitModal(true);
-                                }}
+                                onClick={() => setEditingKit(kit)}
                                 className="hover:bg-vertttraue-primary hover:text-white text-xs"
                               >
-                                Editar
+                                <Edit className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    title: 'Confirmar Exclusão',
-                                    message: `Tem certeza que deseja excluir o kit "${kit.nome}"?`,
-                                    onConfirm: async () => {
-                                      try {
-                                        await deleteKit(kit.id);
-                                        console.log('✅ Kit excluído com sucesso');
-                                      } catch (error) {
-                                        console.error('❌ Erro ao excluir kit:', error);
-                                        alert('Erro ao excluir kit.');
-                                      }
+                                onClick={() => setConfirmAction({
+                                  title: 'Confirmar Exclusão',
+                                  message: `Tem certeza que deseja excluir o kit "${kit.nome}"? Esta ação não pode ser desfeita.`,
+                                  onConfirm: async () => {
+                                    try {
+                                      await deleteKit(kit.id);
+                                      console.log('✅ Kit excluído com sucesso');
+                                    } catch (error) {
+                                      console.error('❌ Erro ao excluir kit:', error);
+                                      alert('Erro ao excluir kit. Verifique o console para mais detalhes.');
                                     }
-                                  });
-                                  setShowConfirmModal(true);
-                                }}
+                                  }
+                                })}
                                 className="hover:bg-red-500 hover:text-white text-xs"
                               >
-                                Excluir
+                                <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
                           </td>
@@ -473,11 +411,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
               <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
                 Conjuntos Disponíveis ({conjuntos.length})
               </h2>
-              
+
               {conjuntos.length === 0 && !conjuntosLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum conjunto encontrado no banco de dados.</p>
-                  <p className="text-sm">Crie o primeiro conjunto clicando no botão acima.</p>
+                  <p className="text-sm">Adicione o primeiro conjunto clicando no botão acima.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -486,9 +424,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                       <tr className="border-b">
                         <th className="text-left p-3">ID</th>
                         <th className="text-left p-3">Nome</th>
-                        <th className="text-left p-3">Descrição</th>
                         <th className="text-left p-3">Preço</th>
-                        <th className="text-left p-3">Total Produtos</th>
+                        <th className="text-left p-3">Estoque</th>
                         <th className="text-left p-3">Ações</th>
                       </tr>
                     </thead>
@@ -497,48 +434,39 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                         <tr key={conjunto.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 font-mono text-xs">{conjunto.id}</td>
                           <td className="p-3 font-semibold">{conjunto.nome}</td>
-                          <td className="p-3">{conjunto.descricao || 'N/A'}</td>
                           <td className="p-3 font-bold text-vertttraue-primary">
                             R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3">
-                            <Badge>{conjunto.total_produtos || 0}</Badge>
-                          </td>
+                          <td className="p-3">{conjunto.estoque_disponivel}</td>
                           <td className="p-3">
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
-                                  setEditingConjunto(conjunto);
-                                  setShowConjuntoModal(true);
-                                }}
+                                onClick={() => setEditingConjunto(conjunto)}
                                 className="hover:bg-vertttraue-primary hover:text-white text-xs"
                               >
-                                Editar
+                                <Edit className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    title: 'Confirmar Exclusão',
-                                    message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"?`,
-                                    onConfirm: async () => {
-                                      try {
-                                        await deleteConjunto(conjunto.id);
-                                        console.log('✅ Conjunto excluído com sucesso');
-                                      } catch (error) {
-                                        console.error('❌ Erro ao excluir conjunto:', error);
-                                        alert('Erro ao excluir conjunto.');
-                                      }
+                                onClick={() => setConfirmAction({
+                                  title: 'Confirmar Exclusão',
+                                  message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"? Esta ação não pode ser desfeita.`,
+                                  onConfirm: async () => {
+                                    try {
+                                      await deleteConjunto(conjunto.id);
+                                      console.log('✅ Conjunto excluído com sucesso');
+                                    } catch (error) {
+                                      console.error('❌ Erro ao excluir conjunto:', error);
+                                      alert('Erro ao excluir conjunto. Verifique o console para mais detalhes.');
                                     }
-                                  });
-                                  setShowConfirmModal(true);
-                                }}
+                                  }
+                                })}
                                 className="hover:bg-red-500 hover:text-white text-xs"
                               >
-                                Excluir
+                                <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
                           </td>
@@ -553,7 +481,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         </Tabs>
       </div>
 
-      {/* Modals */}
       <ProdutoModal
         isOpen={showModal}
         onClose={() => {
@@ -572,8 +499,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           setEditingKit(null);
         }}
         onSave={handleKitSave}
-        products={products}
         kit={editingKit}
+        products={products}
       />
 
       <ConjuntoModal
@@ -583,26 +510,22 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           setEditingConjunto(null);
         }}
         onSave={handleConjuntoSave}
-        products={products}
         conjunto={editingConjunto}
+        products={products}
       />
 
       <AfiliadoEstoqueModal
         isOpen={showAfiliadoEstoqueModal}
         onClose={() => setShowAfiliadoEstoqueModal(false)}
-        onSave={handleAfiliadoEstoqueSave}
         product={selectedProduct}
         affiliates={affiliates}
+        onUpdateStock={handleUpdateAffiliateStock}
       />
 
       <ProductInfoModal
         isOpen={showProductInfoModal}
         onClose={() => setShowProductInfoModal(false)}
         product={selectedProduct}
-        affiliates={affiliates}
-        onUpdateProduct={async (updatedProduct) => {
-          await updateProduct(updatedProduct.id, updatedProduct);
-        }}
       />
 
       <ConfirmModal
@@ -617,6 +540,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         title={confirmAction?.title || ''}
         message={confirmAction?.message || ''}
+        variant={confirmAction?.title.includes('Exclusão') ? 'destructive' : 'default'}
       />
     </div>
   );

@@ -25,6 +25,7 @@ export interface Supplier {
   uf: string;
   cep: string;
   ativo: boolean;
+  total_produtos?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -39,6 +40,8 @@ export interface Affiliate {
   uf: string;
   cep: string;
   comissao: number;
+  chave_pix?: string;
+  tipo_chave_pix?: 'aleatoria' | 'cpf' | 'telefone' | 'email';
   ativo: boolean;
   created_at?: string;
   updated_at?: string;
@@ -47,10 +50,13 @@ export interface Affiliate {
 export interface Sale {
   id: string;
   data_venda: string;
+  data?: Date; // Para compatibilidade com código existente
   total: number;
   status: string;
+  tipo?: 'online' | 'fisica'; // Para compatibilidade
   afiliado_id?: string;
   afiliado_nome?: string;
+  afiliado?: Affiliate; // Para compatibilidade com código existente
   observacoes?: string;
   produtos?: SaleProduct[];
   created_at?: string;
