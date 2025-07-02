@@ -9,13 +9,10 @@ const getAllVendas = async (req, res) => {
     const result = await pool.query(`
       SELECT 
         v.*,
-        a.nome_completo as afiliado_nome,
-        COUNT(vp.id) as total_itens
+        a.nome_completo as afiliado_nome
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      LEFT JOIN venda_produtos vp ON v.id = vp.venda_id
-      GROUP BY v.id, v.data_venda, v.total, v.status, v.afiliado_id, v.observacoes, v.created_at, v.updated_at, a.nome_completo
-      ORDER BY v.created_at DESC
+      ORDER BY v.data_venda DESC
     `);
 
     console.log(`✅ ${result.rows.length} vendas encontradas`);
@@ -48,26 +45,22 @@ const getVendaById = async (req, res) => {
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
 
-    // Buscar produtos da venda
+    // Buscar produtos da venda usando a tabela correta
     const produtosResult = await pool.query(`
       SELECT 
-        vp.*,
+        vi.*,
+        COALESCE(p.nome, k.nome, c.nome) as item_nome,
         CASE 
-          WHEN vp.produto_id IS NOT NULL THEN p.nome
-          WHEN vp.kit_id IS NOT NULL THEN k.nome
-          WHEN vp.conjunto_id IS NOT NULL THEN c.nome
-        END as item_nome,
-        CASE 
-          WHEN vp.produto_id IS NOT NULL THEN 'produto'
-          WHEN vp.kit_id IS NOT NULL THEN 'kit'
-          WHEN vp.conjunto_id IS NOT NULL THEN 'conjunto'
+          WHEN vi.produto_id IS NOT NULL THEN 'produto'
+          WHEN vi.kit_id IS NOT NULL THEN 'kit'
+          WHEN vi.conjunto_id IS NOT NULL THEN 'conjunto'
         END as item_tipo
-      FROM venda_produtos vp
-      LEFT JOIN produtos p ON vp.produto_id = p.id
-      LEFT JOIN kits k ON vp.kit_id = k.id
-      LEFT JOIN conjuntos c ON vp.conjunto_id = c.id
-      WHERE vp.venda_id = $1
-      ORDER BY vp.id
+      FROM venda_itens vi
+      LEFT JOIN produtos p ON vi.produto_id = p.id
+      LEFT JOIN kits k ON vi.kit_id = k.id
+      LEFT JOIN conjuntos c ON vi.conjunto_id = c.id
+      WHERE vi.venda_id = $1
+      ORDER BY vi.id
     `, [id]);
 
     const venda = {
@@ -90,7 +83,7 @@ const createVenda = async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    const { id, data_venda, afiliado_id, produtos, observacoes } = req.body;
+    const { id, data_venda, afiliado_id, produtos, observacoes, tipo } = req.body;
 
     console.log('💰 Criando venda:', { id, afiliado_id, produtos: produtos?.length });
 
@@ -106,12 +99,12 @@ const createVenda = async (req, res) => {
 
     // Inserir venda
     const vendaResult = await client.query(`
-      INSERT INTO vendas (id, data_venda, total, afiliado_id, observacoes, status)
+      INSERT INTO vendas (id, data_venda, total, afiliado_id, observacoes, tipo)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [id, data_venda || new Date(), total, afiliado_id, observacoes || '', 'pendente']);
+    `, [id, data_venda || new Date(), total, afiliado_id, observacoes || '', tipo || 'online']);
 
-    // Inserir produtos da venda
+    // Inserir itens da venda
     for (const item of produtos) {
       const { produto_id, kit_id, conjunto_id, quantidade, preco_unitario } = item;
       
@@ -119,10 +112,12 @@ const createVenda = async (req, res) => {
         throw new Error('Quantidade deve ser maior que zero');
       }
 
+      const subtotal = preco_unitario * quantidade;
+
       await client.query(`
-        INSERT INTO venda_produtos (venda_id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario]);
+        INSERT INTO venda_itens (venda_id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario, subtotal)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario, subtotal]);
     }
 
     await client.query('COMMIT');
@@ -149,7 +144,7 @@ const updateVenda = async (req, res) => {
     await client.query('BEGIN');
     
     const { id } = req.params;
-    const { data_venda, afiliado_id, produtos, observacoes, status } = req.body;
+    const { data_venda, afiliado_id, produtos, observacoes, status, tipo } = req.body;
 
     console.log('💰 Atualizando venda:', id);
 
@@ -164,10 +159,10 @@ const updateVenda = async (req, res) => {
     // Atualizar venda
     const vendaResult = await client.query(`
       UPDATE vendas 
-      SET data_venda = $1, afiliado_id = $2, observacoes = $3, status = $4, total = $5, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      SET data_venda = $1, afiliado_id = $2, observacoes = $3, status = $4, total = $5, tipo = $6, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
       RETURNING *
-    `, [data_venda, afiliado_id, observacoes, status, total, id]);
+    `, [data_venda, afiliado_id, observacoes, status, total, tipo, id]);
 
     if (vendaResult.rows.length === 0) {
       console.log('❌ Venda não encontrada para atualização:', id);
@@ -176,10 +171,10 @@ const updateVenda = async (req, res) => {
 
     // Se produtos foram fornecidos, atualizar
     if (produtos) {
-      // Deletar produtos existentes
-      await client.query('DELETE FROM venda_produtos WHERE venda_id = $1', [id]);
+      // Deletar itens existentes
+      await client.query('DELETE FROM venda_itens WHERE venda_id = $1', [id]);
 
-      // Inserir novos produtos
+      // Inserir novos itens
       for (const item of produtos) {
         const { produto_id, kit_id, conjunto_id, quantidade, preco_unitario } = item;
         
@@ -187,10 +182,12 @@ const updateVenda = async (req, res) => {
           throw new Error('Quantidade deve ser maior que zero');
         }
 
+        const subtotal = preco_unitario * quantidade;
+
         await client.query(`
-          INSERT INTO venda_produtos (venda_id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario]);
+          INSERT INTO venda_itens (venda_id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario, subtotal)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [id, produto_id, kit_id, conjunto_id, quantidade, preco_unitario, subtotal]);
       }
     }
 
@@ -217,8 +214,8 @@ const deleteVenda = async (req, res) => {
     const { id } = req.params;
     console.log('💰 Deletando venda:', id);
 
-    // Deletar produtos da venda
-    await client.query('DELETE FROM venda_produtos WHERE venda_id = $1', [id]);
+    // Deletar itens da venda
+    await client.query('DELETE FROM venda_itens WHERE venda_id = $1', [id]);
 
     // Deletar venda
     const result = await client.query('DELETE FROM vendas WHERE id = $1 RETURNING *', [id]);
@@ -250,11 +247,9 @@ const getVendasPorPeriodo = async (req, res) => {
     let query = `
       SELECT 
         v.*,
-        a.nome_completo as afiliado_nome,
-        COUNT(vp.id) as total_itens
+        a.nome_completo as afiliado_nome
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      LEFT JOIN venda_produtos vp ON v.id = vp.venda_id
     `;
     
     const params = [];
@@ -274,10 +269,7 @@ const getVendasPorPeriodo = async (req, res) => {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    query += `
-      GROUP BY v.id, v.data_venda, v.total, v.status, v.afiliado_id, v.observacoes, v.created_at, v.updated_at, a.nome_completo
-      ORDER BY v.data_venda DESC
-    `;
+    query += ` ORDER BY v.data_venda DESC`;
 
     const result = await pool.query(query, params);
 

@@ -10,6 +10,8 @@ import VendaDetalhesModal from './VendaDetalhesModal';
 import { useSales } from '../../hooks/useSales';
 import { useProducts } from '../../hooks/useProducts';
 import { useAffiliates } from '../../hooks/useAffiliates';
+import { useKits } from '../../hooks/useKits';
+import { useConjuntos } from '../../hooks/useConjuntos';
 import { Sale } from '../../types';
 
 interface VendasPageProps {
@@ -20,6 +22,8 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
   const { sales, loading: salesLoading, error: salesError, createSale } = useSales();
   const { products } = useProducts();
   const { affiliates } = useAffiliates();
+  const { kits } = useKits();
+  const { conjuntos } = useConjuntos();
   
   const [showVendaModal, setShowVendaModal] = useState(false);
   const [showVendaDetalhesModal, setShowVendaDetalhesModal] = useState(false);
@@ -28,7 +32,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
 
   const filteredSales = sales.filter(sale =>
     sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (sale.afiliado && sale.afiliado.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()))
+    (sale.afiliado_nome && sale.afiliado_nome.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleShowSaleDetails = (sale: Sale) => {
@@ -116,14 +120,14 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
                     <tr key={sale.id} className="border-b hover:bg-gray-50">
                       <td className="p-2 font-mono text-xs">{sale.id}</td>
                       <td className="p-2">
-                        {sale.data ? new Date(sale.data).toLocaleDateString('pt-BR') : 'N/A'}
+                        {sale.data_venda ? new Date(sale.data_venda).toLocaleDateString('pt-BR') : 'N/A'}
                       </td>
                       <td className="p-2">
                         <Badge variant={sale.tipo === 'online' ? 'default' : 'secondary'}>
                           {sale.tipo === 'online' ? 'Online' : 'Física'}
                         </Badge>
                       </td>
-                      <td className="p-2">{sale.afiliado?.nome_completo || '-'}</td>
+                      <td className="p-2">{sale.afiliado_nome || '-'}</td>
                       <td className="p-2 font-bold text-vertttraue-primary">
                         R$ {sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
@@ -157,8 +161,8 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         onClose={() => setShowVendaModal(false)}
         onSave={handleSaveSale}
         products={products}
-        conjuntos={[]} // TODO: implementar conjuntos do banco
-        kits={[]} // TODO: implementar kits do banco
+        conjuntos={conjuntos}
+        kits={kits}
         affiliates={affiliates}
       />
 
@@ -167,8 +171,8 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         onClose={() => setShowVendaDetalhesModal(false)}
         sale={selectedSale}
         products={products}
-        conjuntos={[]} // TODO: implementar conjuntos do banco
-        kits={[]} // TODO: implementar kits do banco
+        conjuntos={conjuntos}
+        kits={kits}
       />
     </div>
   );

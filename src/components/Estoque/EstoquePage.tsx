@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,8 +29,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
   const { suppliers } = useSuppliers();
   const { affiliates } = useAffiliates();
-  const { kits, loading: kitsLoading, error: kitsError, createKit, updateKit, deleteKit } = useKits();
-  const { conjuntos, loading: conjuntosLoading, error: conjuntosError, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
+  const { kits, loading: kitsLoading, createKit, updateKit, deleteKit } = useKits();
+  const { conjuntos, loading: conjuntosLoading, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
 
   const [activeTab, setActiveTab] = useState('produtos');
   const [showModal, setShowModal] = useState(false);
@@ -92,90 +93,55 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowProductInfoModal(true);
   };
 
-  const handleManageAffiliateStock = (product: Product) => {
-    setSelectedProduct(product);
-    setShowAfiliadoEstoqueModal(true);
-  };
-
   const handleSave = async (productData: any) => {
-    const action = editingProduct ? 'edição' : 'criação';
-    setConfirmAction({
-      title: `Confirmar ${action}`,
-      message: editingProduct 
-        ? `Confirma a edição do produto "${editingProduct.nome}"?`
-        : 'Confirma a criação do novo produto?',
-      onConfirm: async () => {
-        try {
-          if (editingProduct) {
-            await updateProduct(editingProduct.id, productData);
-            console.log('✅ Produto atualizado com sucesso');
-          } else {
-            await createProduct(productData);
-            console.log('✅ Produto criado com sucesso');
-          }
-          setEditingProduct(null);
-          setShowModal(false);
-        } catch (error) {
-          console.error('❌ Erro ao salvar produto:', error);
-          alert('Erro ao salvar produto. Verifique o console para mais detalhes.');
-        }
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, productData);
+        console.log('✅ Produto atualizado com sucesso');
+      } else {
+        await createProduct(productData);
+        console.log('✅ Produto criado com sucesso');
       }
-    });
-    setShowConfirmModal(true);
+      setEditingProduct(null);
+      setShowModal(false);
+    } catch (error) {
+      console.error('❌ Erro ao salvar produto:', error);
+      alert('Erro ao salvar produto. Verifique o console para mais detalhes.');
+    }
   };
 
   const handleKitSave = async (kitData: any) => {
-    const action = editingKit ? 'edição' : 'criação';
-    setConfirmAction({
-      title: `Confirmar ${action}`,
-      message: editingKit 
-        ? `Confirma a edição do kit "${editingKit.nome}"?`
-        : 'Confirma a criação do novo kit?',
-      onConfirm: async () => {
-        try {
-          if (editingKit) {
-            await updateKit(editingKit.id, kitData);
-            console.log('✅ Kit atualizado com sucesso');
-          } else {
-            await createKit(kitData);
-            console.log('✅ Kit criado com sucesso');
-          }
-          setEditingKit(null);
-          setShowKitModal(false);
-        } catch (error) {
-          console.error('❌ Erro ao salvar kit:', error);
-          alert('Erro ao salvar kit. Verifique o console para mais detalhes.');
-        }
+    try {
+      if (editingKit) {
+        await updateKit(editingKit.id, kitData);
+        console.log('✅ Kit atualizado com sucesso');
+      } else {
+        await createKit(kitData);
+        console.log('✅ Kit criado com sucesso');
       }
-    });
-    setShowConfirmModal(true);
+      setEditingKit(null);
+      setShowKitModal(false);
+    } catch (error) {
+      console.error('❌ Erro ao salvar kit:', error);
+      alert('Erro ao salvar kit. Verifique o console para mais detalhes.');
+    }
   };
 
   const handleConjuntoSave = async (conjuntoData: any) => {
-    const action = editingConjunto ? 'edição' : 'criação';
-    setConfirmAction({
-      title: `Confirmar ${action}`,
-      message: editingConjunto 
-        ? `Confirma a edição do conjunto "${editingConjunto.nome}"?`
-        : 'Confirma a criação do novo conjunto?',
-      onConfirm: async () => {
-        try {
-          if (editingConjunto) {
-            await updateConjunto(editingConjunto.id, conjuntoData);
-            console.log('✅ Conjunto atualizado com sucesso');
-          } else {
-            await createConjunto(conjuntoData);
-            console.log('✅ Conjunto criado com sucesso');
-          }
-          setEditingConjunto(null);
-          setShowConjuntoModal(false);
-        } catch (error) {
-          console.error('❌ Erro ao salvar conjunto:', error);
-          alert('Erro ao salvar conjunto. Verifique o console para mais detalhes.');
-        }
+    try {
+      if (editingConjunto) {
+        await updateConjunto(editingConjunto.id, conjuntoData);
+        console.log('✅ Conjunto atualizado com sucesso');
+      } else {
+        await createConjunto(conjuntoData);
+        console.log('✅ Conjunto criado com sucesso');
       }
-    });
-    setShowConfirmModal(true);
+      setEditingConjunto(null);
+      setShowConjuntoModal(false);
+    } catch (error) {
+      console.error('❌ Erro ao salvar conjunto:', error);
+      alert('Erro ao salvar conjunto. Verifique o console para mais detalhes.');
+    }
   };
 
   const handleUpdateAffiliateStock = async (affiliateId: string, quantity: number) => {
@@ -370,7 +336,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setEditingKit(kit)}
+                                onClick={() => {
+                                  setEditingKit(kit);
+                                  setShowKitModal(true);
+                                }}
                                 className="hover:bg-vertttraue-primary hover:text-white text-xs"
                               >
                                 <Edit className="w-3 h-3" />
@@ -378,19 +347,22 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setConfirmAction({
-                                  title: 'Confirmar Exclusão',
-                                  message: `Tem certeza que deseja excluir o kit "${kit.nome}"? Esta ação não pode ser desfeita.`,
-                                  onConfirm: async () => {
-                                    try {
-                                      await deleteKit(kit.id);
-                                      console.log('✅ Kit excluído com sucesso');
-                                    } catch (error) {
-                                      console.error('❌ Erro ao excluir kit:', error);
-                                      alert('Erro ao excluir kit. Verifique o console para mais detalhes.');
+                                onClick={() => {
+                                  setConfirmAction({
+                                    title: 'Confirmar Exclusão',
+                                    message: `Tem certeza que deseja excluir o kit "${kit.nome}"? Esta ação não pode ser desfeita.`,
+                                    onConfirm: async () => {
+                                      try {
+                                        await deleteKit(kit.id);
+                                        console.log('✅ Kit excluído com sucesso');
+                                      } catch (error) {
+                                        console.error('❌ Erro ao excluir kit:', error);
+                                        alert('Erro ao excluir kit. Verifique o console para mais detalhes.');
+                                      }
                                     }
-                                  }
-                                })}
+                                  });
+                                  setShowConfirmModal(true);
+                                }}
                                 className="hover:bg-red-500 hover:text-white text-xs"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -443,7 +415,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setEditingConjunto(conjunto)}
+                                onClick={() => {
+                                  setEditingConjunto(conjunto);
+                                  setShowConjuntoModal(true);
+                                }}
                                 className="hover:bg-vertttraue-primary hover:text-white text-xs"
                               >
                                 <Edit className="w-3 h-3" />
@@ -451,19 +426,22 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setConfirmAction({
-                                  title: 'Confirmar Exclusão',
-                                  message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"? Esta ação não pode ser desfeita.`,
-                                  onConfirm: async () => {
-                                    try {
-                                      await deleteConjunto(conjunto.id);
-                                      console.log('✅ Conjunto excluído com sucesso');
-                                    } catch (error) {
-                                      console.error('❌ Erro ao excluir conjunto:', error);
-                                      alert('Erro ao excluir conjunto. Verifique o console para mais detalhes.');
+                                onClick={() => {
+                                  setConfirmAction({
+                                    title: 'Confirmar Exclusão',
+                                    message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"? Esta ação não pode ser desfeita.`,
+                                    onConfirm: async () => {
+                                      try {
+                                        await deleteConjunto(conjunto.id);
+                                        console.log('✅ Conjunto excluído com sucesso');
+                                      } catch (error) {
+                                        console.error('❌ Erro ao excluir conjunto:', error);
+                                        alert('Erro ao excluir conjunto. Verifique o console para mais detalhes.');
+                                      }
                                     }
-                                  }
-                                })}
+                                  });
+                                  setShowConfirmModal(true);
+                                }}
                                 className="hover:bg-red-500 hover:text-white text-xs"
                               >
                                 <Trash2 className="w-3 h-3" />
