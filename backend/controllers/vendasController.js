@@ -1,3 +1,4 @@
+
 const pool = require('../config/database');
 
 // Listar todas as vendas
@@ -5,6 +6,19 @@ const getVendas = async (req, res) => {
   console.log('📊 === BUSCANDO TODAS AS VENDAS ===');
   
   try {
+    // Primeiro verificar se a tabela vendas existe
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'vendas'
+      );
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      console.log('⚠️ Tabela vendas não existe ainda');
+      return res.json([]);
+    }
+    
     const query = `
       SELECT 
         v.id,
@@ -74,6 +88,12 @@ const getVendas = async (req, res) => {
     console.error('Erro completo:', error);
     console.error('Message:', error.message);
     console.error('Code:', error.code);
+    
+    // Se for erro de tabela não existir, retornar array vazio
+    if (error.code === '42P01') {
+      console.log('⚠️ Tabela vendas não existe, retornando array vazio');
+      return res.json([]);
+    }
     
     res.status(500).json({ 
       error: 'Erro ao buscar vendas',
