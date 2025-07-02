@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { validateVenda, validateId, validatePeriodo } = require('../middleware/validation');
 const {
-  getAllVendas,
+  getVendas,
   getVendaById,
   createVenda,
   updateVenda,
@@ -16,11 +16,11 @@ const {
 router.use(authenticateToken);
 
 // Rotas para vendas
-router.get('/', getAllVendas);
+router.get('/', getVendas);
 router.get('/periodo', validatePeriodo, getVendasPorPeriodo);
 router.get('/:id', validateId, getVendaById);
 router.post('/', validateVenda, createVenda);
-router.put('/:id', [validateId, ...validateVenda.slice(0, -1)], updateVenda);
+router.put('/:id', [validateId, validateVenda], updateVenda);
 router.delete('/:id', validateId, deleteVenda);
 
 module.exports = router;
