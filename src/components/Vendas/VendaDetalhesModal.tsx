@@ -95,7 +95,6 @@ const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({
                   <>
                     <p><span className="font-medium">Nome:</span> {
                       saleData.afiliado?.nome_completo || 
-                      saleData.afiliado?.nome || 
                       saleData.afiliado_nome || 
                       'N/A'
                     }</p>
