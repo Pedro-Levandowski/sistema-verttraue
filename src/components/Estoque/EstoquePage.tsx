@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,60 +50,18 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     onConfirm: () => void;
   } | null>(null);
 
-  // Função para corrigir codificação de texto
-  const fixTextEncoding = (text: string | undefined): string => {
-    if (!text) return '';
-    return text
-      .replace(/Ã¡/g, 'á')
-      .replace(/Ã /g, 'à')
-      .replace(/Ã©/g, 'é')
-      .replace(/Ãª/g, 'ê')
-      .replace(/Ã­/g, 'í')
-      .replace(/Ã³/g, 'ó')
-      .replace(/Ãº/g, 'ú')
-      .replace(/Ã§/g, 'ç')
-      .replace(/Ã±/g, 'ñ')
-      .replace(/Ã¢/g, 'â')
-      .replace(/Ã´/g, 'ô')
-      .replace(/Ã¹/g, 'ù')
-      .replace(/Ã¨/g, 'è')
-      .replace(/Ã¬/g, 'ì')
-      .replace(/Ã²/g, 'ò')
-      .replace(/Ã¼/g, 'ü')
-      .replace(/Ã¤/g, 'ä')
-      .replace(/Ã¶/g, 'ö')
-      .replace(/Ã/g, 'Á')
-      .replace(/Ã/g, 'É');
-  };
-
-  // Aplicar correção aos dados
-  const fixedProducts = products.map(product => ({
-    ...product,
-    nome: fixTextEncoding(product.nome)
-  }));
-
-  const fixedKits = kits.map(kit => ({
-    ...kit,
-    nome: fixTextEncoding(kit.nome)
-  }));
-
-  const fixedConjuntos = conjuntos.map(conjunto => ({
-    ...conjunto,
-    nome: fixTextEncoding(conjunto.nome)
-  }));
-
-  const filteredProducts = fixedProducts.filter(product =>
+  const filteredProducts = products.filter(product =>
     product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const filteredKits = fixedKits.filter(kit =>
+  const filteredKits = kits.filter(kit =>
     kit.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     kit.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredConjuntos = fixedConjuntos.filter(conjunto =>
+  const filteredConjuntos = conjuntos.filter(conjunto =>
     conjunto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conjunto.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -117,7 +76,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     console.log('🗑️ Solicitando exclusão do produto:', product.id);
     setConfirmAction({
       title: 'Confirmar Exclusão',
-      message: `Tem certeza que deseja excluir o produto "${fixTextEncoding(product.nome)}"? Esta ação não pode ser desfeita.`,
+      message: `Tem certeza que deseja excluir o produto "${product.nome}"? Esta ação não pode ser desfeita.`,
       onConfirm: async () => {
         try {
           await deleteProduct(product.id);
@@ -550,7 +509,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         onSave={handleKitSave}
         kit={editingKit}
-        products={fixedProducts}
+        products={products}
       />
 
       <ConjuntoModal
@@ -561,7 +520,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         }}
         onSave={handleConjuntoSave}
         conjunto={editingConjunto}
-        products={fixedProducts}
+        products={products}
       />
 
       <AfiliadoEstoqueModal
