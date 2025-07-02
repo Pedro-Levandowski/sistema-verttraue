@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   nome: string;
@@ -50,15 +49,18 @@ export interface Affiliate {
 export interface Sale {
   id: string;
   data_venda: string;
-  data?: Date; // Para compatibilidade com código existente
-  total: number;
-  status: string;
-  tipo?: 'online' | 'fisica'; // Para compatibilidade
+  valor_total: number; // Updated to match backend API
+  data?: Date; // For backward compatibility
+  total?: number; // For backward compatibility
+  status?: string;
+  tipo?: 'online' | 'fisica'; // For backward compatibility
   afiliado_id?: string;
   afiliado_nome?: string;
-  afiliado?: Affiliate; // Para compatibilidade com código existente
+  afiliado_email?: string;
+  afiliado?: Affiliate; // For backward compatibility
   observacoes?: string;
   produtos?: SaleProduct[];
+  itens?: any[]; // For backend data structure
   created_at?: string;
   updated_at?: string;
 }
