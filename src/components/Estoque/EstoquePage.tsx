@@ -28,8 +28,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
   const { suppliers } = useSuppliers();
   const { affiliates } = useAffiliates();
-  const { kits, loading: kitsLoading, error: kitsError, createKit, updateKit } = useKits();
-  const { conjuntos, loading: conjuntosLoading, error: conjuntosError, createConjunto, updateConjunto } = useConjuntos();
+  const { kits, loading: kitsLoading, error: kitsError, createKit, updateKit, deleteKit } = useKits();
+  const { conjuntos, loading: conjuntosLoading, error: conjuntosError, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
 
   const [activeTab, setActiveTab] = useState('produtos');
   const [showModal, setShowModal] = useState(false);
@@ -526,6 +526,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         isOpen={showProductInfoModal}
         onClose={() => setShowProductInfoModal(false)}
         product={selectedProduct}
+        affiliates={affiliates}
       />
 
       <ConfirmModal

@@ -9,7 +9,7 @@ import { Product, Affiliate } from '../../types';
 interface AfiliadoEstoqueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (productId: string, afiliadoId: string, quantidade: number) => void;
+  onUpdateStock: (affiliateId: string, quantity: number) => Promise<void>;
   product: Product | null;
   affiliates: Affiliate[];
 }
@@ -17,7 +17,7 @@ interface AfiliadoEstoqueModalProps {
 const AfiliadoEstoqueModal: React.FC<AfiliadoEstoqueModalProps> = ({ 
   isOpen, 
   onClose, 
-  onSave, 
+  onUpdateStock, 
   product, 
   affiliates 
 }) => {
@@ -31,12 +31,12 @@ const AfiliadoEstoqueModal: React.FC<AfiliadoEstoqueModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (product && selectedAfiliadoId && quantidade) {
       const qtd = parseInt(quantidade);
       if (qtd > 0 && qtd <= product.estoque_site) {
-        onSave(product.id, selectedAfiliadoId, qtd);
+        await onUpdateStock(selectedAfiliadoId, qtd);
         onClose();
       }
     }
