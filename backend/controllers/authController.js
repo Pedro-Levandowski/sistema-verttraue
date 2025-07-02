@@ -320,8 +320,12 @@ const testDatabase = async (req, res) => {
 // Resetar usuário admin
 const resetAdmin = async (req, res) => {
   try {
-    console.log('🔄 Resetando usuário admin...');
+    console.log('🔄 === RESETANDO USUÁRIO ADMIN ===');
+    console.log('📨 Request body:', req.body);
+    console.log('🔑 JWT_SECRET definido:', JWT_SECRET ? 'SIM' : 'NÃO');
+    
     const hashedPassword = await bcrypt.hash('123456', 10);
+    console.log('🔐 Senha hasheada gerada');
     
     const result = await pool.query(
       'UPDATE usuarios SET password = $1 WHERE username = $2 RETURNING username, nome',
@@ -329,14 +333,14 @@ const resetAdmin = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      // Se não existe, criar
+      console.log('👤 Admin não existe, criando...');
       await pool.query(
         'INSERT INTO usuarios (username, password, nome) VALUES ($1, $2, $3)',
         ['admin@vertttraue.com', hashedPassword, 'Administrador']
       );
     }
 
-    console.log('✅ Usuário admin resetado/criado');
+    console.log('✅ Usuário admin resetado/criado com sucesso');
     res.json({ 
       success: true,
       message: 'Usuário admin resetado com sucesso',
@@ -346,11 +350,17 @@ const resetAdmin = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Erro ao resetar admin:', error);
+    console.error('❌ === ERRO AO RESETAR ADMIN ===');
+    console.error('Erro completo:', error);
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({ 
       success: false,
-      error: 'Erro interno do servidor',
-      details: error.message
+      error: 'Erro interno do servidor ao resetar admin',
+      details: error.message,
+      code: error.code
     });
   }
 };
@@ -358,46 +368,69 @@ const resetAdmin = async (req, res) => {
 // Criar usuário
 const createUser = async (req, res) => {
   try {
+    console.log('👤 === CRIANDO USUÁRIO ===');
+    console.log('📨 Request body:', req.body);
+    
     const { username, password, nome } = req.body;
-    console.log('👤 Criando usuário:', username);
 
-    if (!username || !password) {
+    // Validação interna robusta
+    if (!username || typeof username !== 'string' || username.trim() === '') {
+      console.log('❌ Username inválido:', username);
       return res.status(400).json({ 
         success: false,
-        error: 'Username e senha são obrigatórios' 
+        error: 'Username é obrigatório e deve ser uma string válida' 
       });
     }
 
-    const existingUser = await pool.query('SELECT id FROM usuarios WHERE username = $1', [username]);
+    if (!password || typeof password !== 'string' || password.trim() === '') {
+      console.log('❌ Password inválido');
+      return res.status(400).json({ 
+        success: false,
+        error: 'Password é obrigatório e deve ser uma string válida' 
+      });
+    }
+
+    console.log('🔍 Verificando se usuário já existe:', username);
+    const existingUser = await pool.query('SELECT id FROM usuarios WHERE username = $1', [username.trim()]);
     
     if (existingUser.rows.length > 0) {
+      console.log('❌ Usuário já existe:', username);
       return res.status(400).json({ 
         success: false,
         error: 'Usuário já existe' 
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('🔐 Gerando hash da senha...');
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+    
+    console.log('💾 Inserindo no banco de dados...');
     const result = await pool.query(
       'INSERT INTO usuarios (username, password, nome) VALUES ($1, $2, $3) RETURNING id, username, nome',
-      [username, hashedPassword, nome || username]
+      [username.trim(), hashedPassword, nome?.trim() || username.trim()]
     );
 
-    console.log('✅ Usuário criado');
+    console.log('✅ Usuário criado com sucesso:', result.rows[0]);
     res.status(201).json({ 
       success: true,
       user: result.rows[0],
       credentials: {
-        username: username,
-        password: password
+        username: username.trim(),
+        password: password.trim()
       }
     });
   } catch (error) {
-    console.error('❌ Erro ao criar usuário:', error);
+    console.error('❌ === ERRO AO CRIAR USUÁRIO ===');
+    console.error('Erro completo:', error);
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({ 
       success: false,
-      error: 'Erro interno do servidor',
-      details: error.message
+      error: 'Erro interno do servidor ao criar usuário',
+      details: error.message,
+      code: error.code
     });
   }
 };

@@ -19,10 +19,10 @@ router.post('/register', validateLogin, register);
 // Testar conexão com banco de dados
 router.get('/test-database', testDatabase);
 
-// Resetar usuário admin
+// Resetar usuário admin (SEM validação - é para emergência)
 router.post('/reset-admin', resetAdmin);
 
-// Criar usuário (novo endpoint para administração)
-router.post('/create-user', validateLogin, createUser);
+// Criar usuário (SEM validação validateLogin - vai validar internamente)
+router.post('/create-user', createUser);
 
 module.exports = router;
