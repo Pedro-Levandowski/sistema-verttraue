@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,35 +27,34 @@ interface EstoquePageProps {
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   console.log('🚀 [EstoquePage] Inicializando componente...');
 
-  // Hooks com fallbacks seguros
-  const productsHook = useProducts();
-  const suppliersHook = useSuppliers();
-  const affiliatesHook = useAffiliates();
-  const kitsHook = useKits();
-  const conjuntosHook = useConjuntos();
+  // Hooks
+  const {
+    products = [],
+    loading: productsLoading = false,
+    error: productsError = null,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  } = useProducts() || {};
 
-  // Garantir que sempre temos valores válidos
-  const products = productsHook?.products || [];
-  const productsLoading = productsHook?.loading || false;
-  const productsError = productsHook?.error || null;
-  const createProduct = productsHook?.createProduct;
-  const updateProduct = productsHook?.updateProduct;
-  const deleteProduct = productsHook?.deleteProduct;
-
-  const suppliers = suppliersHook?.suppliers || [];
-  const affiliates = affiliatesHook?.affiliates || [];
+  const { suppliers = [] } = useSuppliers() || {};
+  const { affiliates = [] } = useAffiliates() || {};
   
-  const kits = kitsHook?.kits || [];
-  const kitsLoading = kitsHook?.loading || false;
-  const createKit = kitsHook?.createKit;
-  const updateKit = kitsHook?.updateKit;
-  const deleteKit = kitsHook?.deleteKit;
+  const {
+    kits = [],
+    loading: kitsLoading = false,
+    createKit,
+    updateKit,
+    deleteKit,
+  } = useKits() || {};
 
-  const conjuntos = conjuntosHook?.conjuntos || [];
-  const conjuntosLoading = conjuntosHook?.loading || false;
-  const createConjunto = conjuntosHook?.createConjunto;
-  const updateConjunto = conjuntosHook?.updateConjunto;
-  const deleteConjunto = conjuntosHook?.deleteConjunto;
+  const {
+    conjuntos = [],
+    loading: conjuntosLoading = false,
+    createConjunto,
+    updateConjunto,
+    deleteConjunto,
+  } = useConjuntos() || {};
 
   // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
@@ -102,7 +100,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     conjunto?.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handlers com tratamento de erro melhorado
+  // Handlers com verificação de função
   const handleEdit = (product: Product) => {
     try {
       console.log('🔧 [EstoquePage] Editando produto:', product?.id);
@@ -110,7 +108,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       setShowModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao editar produto:', error);
-      alert('Erro ao abrir editor de produto');
     }
   };
 
@@ -125,19 +122,15 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             if (deleteProduct) {
               await deleteProduct(product.id);
               console.log('✅ [EstoquePage] Produto excluído com sucesso');
-            } else {
-              throw new Error('Função de deletar não disponível');
             }
           } catch (error) {
             console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
-            alert('Erro ao excluir produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
           }
         }
       });
       setShowConfirmModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao preparar exclusão:', error);
-      alert('Erro ao preparar exclusão do produto');
     }
   };
 
@@ -148,7 +141,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       setShowProductInfoModal(true);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao visualizar detalhes:', error);
-      alert('Erro ao visualizar detalhes do produto');
     }
   };
 
@@ -161,14 +153,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       } else if (createProduct) {
         await createProduct(productData);
         console.log('✅ [EstoquePage] Produto criado com sucesso');
-      } else {
-        throw new Error('Funções de produto não disponíveis');
       }
       setEditingProduct(null);
       setShowModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar produto:', error);
-      alert('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -179,14 +168,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         await updateKit(editingKit.id, kitData);
       } else if (createKit) {
         await createKit(kitData);
-      } else {
-        throw new Error('Funções de kit não disponíveis');
       }
       setEditingKit(null);
       setShowKitModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar kit:', error);
-      alert('Erro ao salvar kit: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -197,14 +183,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         await updateConjunto(editingConjunto.id, conjuntoData);
       } else if (createConjunto) {
         await createConjunto(conjuntoData);
-      } else {
-        throw new Error('Funções de conjunto não disponíveis');
       }
       setEditingConjunto(null);
       setShowConjuntoModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar conjunto:', error);
-      alert('Erro ao salvar conjunto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -218,11 +201,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       window.location.reload();
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao atualizar estoque do afiliado:', error);
-      alert('Erro ao atualizar estoque do afiliado: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
-  // Tratamento de erro crítico com mais informações
+  // Tratamento de erro
   if (productsError) {
     console.error('❌ [EstoquePage] Erro crítico na página de estoque:', productsError);
     return (
@@ -231,7 +213,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         <div className="container mx-auto p-6">
           <Alert className="border-red-200 bg-red-50">
             <AlertDescription className="text-red-700">
-              ❌ Erro ao carregar dados do estoque: {productsError}
+              Erro ao carregar dados do estoque: {productsError}
             </AlertDescription>
           </Alert>
           <div className="mt-4 space-x-2">
@@ -253,21 +235,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     );
   }
 
-  // Verificar se todos os hooks carregaram
-  if (!productsHook || !suppliersHook || !affiliatesHook || !kitsHook || !conjuntosHook) {
-    console.log('⏳ [EstoquePage] Aguardando hooks inicializarem...');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <Header title="Gestão de Estoque" onBack={onBack} />
-        <div className="container mx-auto p-6">
-          <Alert>
-            <AlertDescription>Inicializando sistema de estoque...</AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
-
   console.log('🎨 [EstoquePage] Renderizando interface...');
 
   return (
@@ -275,7 +242,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <Header title="Gestão de Estoque" onBack={onBack} />
 
       <div className="container mx-auto p-6">
-        {/* Indicador de carregamento */}
         {productsLoading && (
           <Alert className="mb-4">
             <AlertDescription>Carregando produtos do banco de dados...</AlertDescription>
@@ -574,68 +540,78 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       </div>
 
       {/* Modais */}
-      <ProdutoModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditingProduct(null);
-        }}
-        onSave={handleSave}
-        product={editingProduct}
-        suppliers={suppliers}
-      />
+      {showModal && (
+        <ProdutoModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setEditingProduct(null);
+          }}
+          onSave={handleSave}
+          product={editingProduct}
+          suppliers={suppliers}
+        />
+      )}
 
-      <KitModal
-        isOpen={showKitModal}
-        onClose={() => {
-          setShowKitModal(false);
-          setEditingKit(null);
-        }}
-        onSave={handleKitSave}
-        kit={editingKit}
-        products={products}
-      />
+      {showKitModal && (
+        <KitModal
+          isOpen={showKitModal}
+          onClose={() => {
+            setShowKitModal(false);
+            setEditingKit(null);
+          }}
+          onSave={handleKitSave}
+          kit={editingKit}
+          products={products}
+        />
+      )}
 
-      <ConjuntoModal
-        isOpen={showConjuntoModal}
-        onClose={() => {
-          setShowConjuntoModal(false);
-          setEditingConjunto(null);
-        }}
-        onSave={handleConjuntoSave}
-        conjunto={editingConjunto}
-        products={products}
-      />
+      {showConjuntoModal && (
+        <ConjuntoModal
+          isOpen={showConjuntoModal}
+          onClose={() => {
+            setShowConjuntoModal(false);
+            setEditingConjunto(null);
+          }}
+          onSave={handleConjuntoSave}
+          conjunto={editingConjunto}
+          products={products}
+        />
+      )}
 
-      <AfiliadoEstoqueModal
-        isOpen={showAfiliadoEstoqueModal}
-        onClose={() => setShowAfiliadoEstoqueModal(false)}
-        product={selectedProduct}
-        affiliates={affiliates}
-        onUpdateStock={handleUpdateAffiliateStock}
-      />
+      {showAfiliadoEstoqueModal && (
+        <AfiliadoEstoqueModal
+          isOpen={showAfiliadoEstoqueModal}
+          onClose={() => setShowAfiliadoEstoqueModal(false)}
+          product={selectedProduct}
+          affiliates={affiliates}
+          onUpdateStock={handleUpdateAffiliateStock}
+        />
+      )}
 
-      <ProductInfoModal
-        isOpen={showProductInfoModal}
-        onClose={() => setShowProductInfoModal(false)}
-        product={selectedProduct}
-        affiliates={affiliates}
-      />
+      {showProductInfoModal && (
+        <ProductInfoModal
+          isOpen={showProductInfoModal}
+          onClose={() => setShowProductInfoModal(false)}
+          product={selectedProduct}
+          affiliates={affiliates}
+        />
+      )}
 
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={() => {
-          if (confirmAction) {
+      {showConfirmModal && confirmAction && (
+        <ConfirmModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={() => {
             confirmAction.onConfirm();
             setConfirmAction(null);
-          }
-          setShowConfirmModal(false);
-        }}
-        title={confirmAction?.title || ''}
-        message={confirmAction?.message || ''}
-        variant={confirmAction?.title.includes('Exclusão') ? 'destructive' : 'default'}
-      />
+            setShowConfirmModal(false);
+          }}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          variant={confirmAction.title.includes('Exclusão') ? 'destructive' : 'default'}
+        />
+      )}
     </div>
   );
 };

@@ -1,96 +1,97 @@
+
 const pool = require('../config/database');
 
-// Listar todas as vendas - versão robusta
-const getVendas = async (req, res) => {
-  console.log('📊 [VendasController] === BUSCANDO VENDAS ===');
-  
+// Verificar se tabela existe
+const checkTableExists = async (tableName) => {
   try {
-    // Teste de conexão
-    console.log('🔍 [VendasController] Testando conexão com banco...');
-    await pool.query('SELECT 1 as test');
-    console.log('✅ [VendasController] Conexão com banco OK');
-
-    // Verificar se tabela vendas existe
-    console.log('🔍 [VendasController] Verificando se tabela vendas existe...');
-    const tableExistsQuery = `
+    const result = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
-        AND table_name = 'vendas'
-      ) as exists;
-    `;
+        AND table_name = $1
+      );
+    `, [tableName]);
+    return result.rows[0].exists;
+  } catch (error) {
+    console.error(`❌ Erro ao verificar tabela ${tableName}:`, error);
+    return false;
+  }
+};
+
+// Listar todas as vendas
+const getAllVendas = async (req, res) => {
+  try {
+    console.log('🛒 Buscando todas as vendas...');
     
-    const tableResult = await pool.query(tableExistsQuery);
-    console.log('🔍 [VendasController] Resultado verificação tabela:', tableResult.rows[0]);
+    // Verificar se tabelas existem
+    const vendasExists = await checkTableExists('vendas');
+    const vendaProdutosExists = await checkTableExists('venda_produtos');
     
-    if (!tableResult.rows[0].exists) {
-      console.log('⚠️ [VendasController] Tabela vendas não existe, retornando array vazio');
+    if (!vendasExists) {
+      console.log('⚠️ Tabela vendas não existe, retornando array vazio');
       return res.json([]);
     }
 
-    // Contar registros primeiro
-    console.log('🔍 [VendasController] Contando vendas...');
-    const countResult = await pool.query('SELECT COUNT(*) as total FROM vendas');
-    const total = parseInt(countResult.rows[0].total);
-    console.log(`📊 [VendasController] Total de vendas no banco: ${total}`);
-
-    // Buscar vendas básicas
-    console.log('🔍 [VendasController] Buscando vendas...');
-    const vendasQuery = `
+    const result = await pool.query(`
       SELECT 
-        v.id,
-        v.data_venda,
-        v.valor_total,
-        v.observacoes,
-        v.created_at,
-        v.afiliado_id,
-        a.nome as afiliado_nome,
+        v.*,
+        a.nome_completo as afiliado_nome,
         a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      ORDER BY v.created_at DESC 
-      LIMIT 100
-    `;
+      ORDER BY v.created_at DESC
+    `);
+
+    const vendas = [];
     
-    const vendasResult = await pool.query(vendasQuery);
-    console.log(`✅ [VendasController] ${vendasResult.rows.length} vendas encontradas`);
-    
-    // Processar dados
-    const vendas = vendasResult.rows.map(venda => ({
-      id: venda.id,
-      data_venda: venda.data_venda,
-      valor_total: parseFloat(venda.valor_total) || 0,
-      observacoes: venda.observacoes,
-      created_at: venda.created_at,
-      afiliado_id: venda.afiliado_id,
-      afiliado_nome: venda.afiliado_nome,
-      afiliado_email: venda.afiliado_email,
-      itens: [] // Por enquanto vazio para simplicidade
-    }));
-    
-    console.log('✅ [VendasController] Retornando vendas processadas');
-    console.log('📤 [VendasController] Amostra de dados:', vendas.slice(0, 2));
-    
+    for (const row of result.rows) {
+      let produtos = [];
+      
+      if (vendaProdutosExists) {
+        try {
+          const produtosResult = await pool.query(`
+            SELECT 
+              vp.*,
+              p.nome as produto_nome,
+              p.preco as produto_preco
+            FROM venda_produtos vp
+            LEFT JOIN produtos p ON vp.produto_id = p.id
+            WHERE vp.venda_id = $1
+          `, [row.id]);
+          
+          produtos = produtosResult.rows;
+        } catch (error) {
+          console.error('❌ Erro ao buscar produtos da venda:', error);
+        }
+      }
+
+      vendas.push({
+        id: row.id,
+        data_venda: row.data_venda,
+        valor_total: parseFloat(row.valor_total) || 0,
+        status: row.status || 'pendente',
+        afiliado: row.afiliado_id ? {
+          id: row.afiliado_id,
+          nome: row.afiliado_nome || '',
+          email: row.afiliado_email || ''
+        } : null,
+        produtos: produtos.map(p => ({
+          id: p.produto_id,
+          nome: p.produto_nome || '',
+          quantidade: parseInt(p.quantidade) || 0,
+          preco_unitario: parseFloat(p.preco_unitario) || 0,
+          subtotal: parseFloat(p.subtotal) || 0
+        })),
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      });
+    }
+
+    console.log(`✅ ${vendas.length} vendas encontradas`);
     res.json(vendas);
-    
   } catch (error) {
-    console.error('❌ [VendasController] === ERRO COMPLETO ===');
-    console.error('❌ [VendasController] Tipo do erro:', typeof error);
-    console.error('❌ [VendasController] Erro:', error);
-    console.error('❌ [VendasController] Message:', error.message);
-    console.error('❌ [VendasController] Code:', error.code);
-    console.error('❌ [VendasController] Stack:', error.stack);
-    
-    // Resposta de erro detalhada
-    const errorResponse = {
-      error: 'Erro ao buscar vendas',
-      details: error.message || 'Erro interno do servidor',
-      code: error.code || 'UNKNOWN',
-      timestamp: new Date().toISOString()
-    };
-    
-    console.error('📤 [VendasController] Enviando erro:', errorResponse);
-    res.status(500).json(errorResponse);
+    console.error('❌ Erro ao buscar vendas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor ao buscar vendas' });
   }
 };
 
@@ -98,124 +99,143 @@ const getVendas = async (req, res) => {
 const getVendaById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔍 [Controller] Buscando venda ID:', id);
-    
-    const vendaQuery = `
-      SELECT * FROM vendas WHERE id = $1
-    `;
-    
-    const vendaResult = await pool.query(vendaQuery, [id]);
-    
-    if (vendaResult.rows.length === 0) {
+    console.log('🛒 Buscando venda:', id);
+
+    const vendasExists = await checkTableExists('vendas');
+    if (!vendasExists) {
+      return res.status(404).json({ error: 'Tabela de vendas não encontrada' });
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        v.*,
+        a.nome_completo as afiliado_nome,
+        a.email as afiliado_email
+      FROM vendas v
+      LEFT JOIN afiliados a ON v.afiliado_id = a.id
+      WHERE v.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      console.log('❌ Venda não encontrada:', id);
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
-    
-    console.log('✅ [Controller] Venda encontrada');
-    res.json(vendaResult.rows[0]);
-  } catch (error) {
-    console.error('❌ [Controller] Erro ao buscar venda:', error);
-    res.status(500).json({
-      error: 'Erro ao buscar venda',
-      details: error.message
-    });
-  }
-};
 
-// Buscar vendas por período
-const getVendasPorPeriodo = async (req, res) => {
-  try {
-    const { data_inicio, data_fim } = req.query;
-    console.log('🔍 [Controller] Buscando vendas por período:', { data_inicio, data_fim });
+    const venda = result.rows[0];
     
-    let query = `SELECT * FROM vendas`;
-    const params = [];
-    const conditions = [];
+    // Buscar produtos da venda
+    let produtos = [];
+    const vendaProdutosExists = await checkTableExists('venda_produtos');
     
-    if (data_inicio) {
-      conditions.push(`data_venda >= $${params.length + 1}`);
-      params.push(data_inicio);
+    if (vendaProdutosExists) {
+      try {
+        const produtosResult = await pool.query(`
+          SELECT 
+            vp.*,
+            p.nome as produto_nome,
+            p.preco as produto_preco
+          FROM venda_produtos vp
+          LEFT JOIN produtos p ON vp.produto_id = p.id
+          WHERE vp.venda_id = $1
+        `, [id]);
+        
+        produtos = produtosResult.rows;
+      } catch (error) {
+        console.error('❌ Erro ao buscar produtos da venda:', error);
+      }
     }
-    
-    if (data_fim) {
-      conditions.push(`data_venda <= $${params.length + 1}`);
-      params.push(data_fim);
-    }
-    
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
-    }
-    
-    query += ` ORDER BY data_venda DESC`;
-    
-    const result = await pool.query(query, params);
-    console.log(`✅ [Controller] Encontradas ${result.rows.length} vendas no período`);
-    
-    res.json(result.rows);
+
+    const vendaCompleta = {
+      id: venda.id,
+      data_venda: venda.data_venda,
+      valor_total: parseFloat(venda.valor_total) || 0,
+      status: venda.status || 'pendente',
+      afiliado: venda.afiliado_id ? {
+        id: venda.afiliado_id,
+        nome: venda.afiliado_nome || '',
+        email: venda.afiliado_email || ''
+      } : null,
+      produtos: produtos.map(p => ({
+        id: p.produto_id,
+        nome: p.produto_nome || '',
+        quantidade: parseInt(p.quantidade) || 0,
+        preco_unitario: parseFloat(p.preco_unitario) || 0,
+        subtotal: parseFloat(p.subtotal) || 0
+      })),
+      created_at: venda.created_at,
+      updated_at: venda.updated_at
+    };
+
+    console.log('✅ Venda encontrada:', vendaCompleta.id);
+    res.json(vendaCompleta);
   } catch (error) {
-    console.error('❌ [Controller] Erro ao buscar vendas por período:', error);
-    res.status(500).json({
-      error: 'Erro ao buscar vendas por período',
-      details: error.message
-    });
+    console.error('❌ Erro ao buscar venda:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
 
 // Criar nova venda
 const createVenda = async (req, res) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN');
-    console.log('🆕 [Controller] Criando nova venda...');
+    const { afiliado_id, produtos, valor_total, status = 'pendente' } = req.body;
     
-    const { afiliado_id, data_venda, valor_total, observacoes, itens } = req.body;
-    
-    const vendaQuery = `
-      INSERT INTO vendas (afiliado_id, data_venda, valor_total, observacoes)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    
-    const vendaResult = await client.query(vendaQuery, [
-      afiliado_id || null,
-      data_venda,
-      valor_total,
-      observacoes || null
-    ]);
-    
-    const venda = vendaResult.rows[0];
-    console.log('✅ [Controller] Venda criada:', venda.id);
-    
-    // Processar itens se existirem
-    if (itens && itens.length > 0) {
-      for (const item of itens) {
-        const itemQuery = `
-          INSERT INTO venda_itens (venda_id, produto_id, quantidade, preco_unitario, subtotal)
-          VALUES ($1, $2, $3, $4, $5)
-        `;
-        
-        await client.query(itemQuery, [
-          venda.id,
-          item.produto_id,
-          item.quantidade,
-          item.preco_unitario,
-          item.subtotal
-        ]);
-      }
-      console.log(`✅ [Controller] ${itens.length} itens adicionados à venda`);
+    console.log('🛒 Criando venda:', { afiliado_id, produtos: produtos?.length, valor_total });
+
+    // Verificações básicas
+    if (!produtos || !Array.isArray(produtos) || produtos.length === 0) {
+      return res.status(400).json({ error: 'Produtos são obrigatórios' });
     }
-    
-    await client.query('COMMIT');
-    res.status(201).json(venda);
+
+    if (!valor_total || valor_total <= 0) {
+      return res.status(400).json({ error: 'Valor total deve ser maior que zero' });
+    }
+
+    const vendasExists = await checkTableExists('vendas');
+    if (!vendasExists) {
+      return res.status(500).json({ error: 'Tabela de vendas não configurada' });
+    }
+
+    // Iniciar transação
+    await pool.query('BEGIN');
+
+    try {
+      // Criar venda
+      const vendaResult = await pool.query(`
+        INSERT INTO vendas (afiliado_id, valor_total, status, data_venda)
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        RETURNING *
+      `, [afiliado_id, valor_total, status]);
+
+      const venda = vendaResult.rows[0];
+
+      // Adicionar produtos (se tabela existir)
+      const vendaProdutosExists = await checkTableExists('venda_produtos');
+      if (vendaProdutosExists) {
+        for (const produto of produtos) {
+          await pool.query(`
+            INSERT INTO venda_produtos (venda_id, produto_id, quantidade, preco_unitario, subtotal)
+            VALUES ($1, $2, $3, $4, $5)
+          `, [
+            venda.id,
+            produto.id,
+            produto.quantidade,
+            produto.preco_unitario,
+            produto.quantidade * produto.preco_unitario
+          ]);
+        }
+      }
+
+      await pool.query('COMMIT');
+      
+      console.log('✅ Venda criada:', venda.id);
+      res.status(201).json(venda);
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ [Controller] Erro ao criar venda:', error);
-    res.status(500).json({
-      error: 'Erro ao criar venda',
-      details: error.message
-    });
-  } finally {
-    client.release();
+    console.error('❌ Erro ao criar venda:', error);
+    res.status(500).json({ error: 'Erro interno do servidor ao criar venda' });
   }
 };
 
@@ -223,81 +243,83 @@ const createVenda = async (req, res) => {
 const updateVenda = async (req, res) => {
   try {
     const { id } = req.params;
-    const { afiliado_id, data_venda, valor_total, observacoes } = req.body;
+    const { status, valor_total } = req.body;
     
-    console.log('🔄 [Controller] Atualizando venda:', id);
-    
-    const query = `
+    console.log('🛒 Atualizando venda:', id);
+
+    const vendasExists = await checkTableExists('vendas');
+    if (!vendasExists) {
+      return res.status(404).json({ error: 'Tabela de vendas não encontrada' });
+    }
+
+    const result = await pool.query(`
       UPDATE vendas 
-      SET afiliado_id = $1, data_venda = $2, valor_total = $3, observacoes = $4
-      WHERE id = $5
+      SET status = $1, valor_total = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
       RETURNING *
-    `;
-    
-    const result = await pool.query(query, [
-      afiliado_id || null,
-      data_venda,
-      valor_total,
-      observacoes || null,
-      id
-    ]);
-    
+    `, [status, valor_total, id]);
+
     if (result.rows.length === 0) {
+      console.log('❌ Venda não encontrada para atualização:', id);
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
-    
-    console.log('✅ [Controller] Venda atualizada');
+
+    console.log('✅ Venda atualizada:', result.rows[0].id);
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ [Controller] Erro ao atualizar venda:', error);
-    res.status(500).json({
-      error: 'Erro ao atualizar venda',
-      details: error.message
-    });
+    console.error('❌ Erro ao atualizar venda:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
 
 // Deletar venda
 const deleteVenda = async (req, res) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN');
     const { id } = req.params;
-    
-    console.log('🗑️ [Controller] Deletando venda:', id);
-    
-    // Deletar itens primeiro
-    await client.query('DELETE FROM venda_itens WHERE venda_id = $1', [id]);
-    
-    // Deletar venda
-    const result = await client.query('DELETE FROM vendas WHERE id = $1 RETURNING *', [id]);
-    
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Venda não encontrada' });
+    console.log('🛒 Deletando venda:', id);
+
+    const vendasExists = await checkTableExists('vendas');
+    if (!vendasExists) {
+      return res.status(404).json({ error: 'Tabela de vendas não encontrada' });
     }
-    
-    await client.query('COMMIT');
-    console.log('✅ [Controller] Venda deletada');
-    res.json({ message: 'Venda deletada com sucesso' });
+
+    // Iniciar transação
+    await pool.query('BEGIN');
+
+    try {
+      // Deletar produtos da venda primeiro (se tabela existir)
+      const vendaProdutosExists = await checkTableExists('venda_produtos');
+      if (vendaProdutosExists) {
+        await pool.query('DELETE FROM venda_produtos WHERE venda_id = $1', [id]);
+      }
+
+      // Deletar venda
+      const result = await pool.query('DELETE FROM vendas WHERE id = $1 RETURNING *', [id]);
+
+      if (result.rows.length === 0) {
+        await pool.query('ROLLBACK');
+        console.log('❌ Venda não encontrada para deleção:', id);
+        return res.status(404).json({ error: 'Venda não encontrada' });
+      }
+
+      await pool.query('COMMIT');
+      
+      console.log('✅ Venda deletada:', result.rows[0].id);
+      res.json({ message: 'Venda deletada com sucesso' });
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ [Controller] Erro ao deletar venda:', error);
-    res.status(500).json({
-      error: 'Erro ao deletar venda',
-      details: error.message
-    });
-  } finally {
-    client.release();
+    console.error('❌ Erro ao deletar venda:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
 
 module.exports = {
-  getVendas,
+  getAllVendas,
   getVendaById,
   createVenda,
   updateVenda,
-  deleteVenda,
-  getVendasPorPeriodo
+  deleteVenda
 };
