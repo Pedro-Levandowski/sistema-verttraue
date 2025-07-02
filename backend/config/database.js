@@ -86,46 +86,65 @@ pool.on('error', (err, client) => {
     default:
       console.error('🚨 Erro desconhecido:', err.code);
   }
-  
-  process.exit(-1);
 });
 
 // Teste de conexão inicial mais robusto
 const testInitialConnection = async () => {
-  let retries = 3;
+  let retries = 5;
   
   while (retries > 0) {
     try {
-      console.log(`🔄 Tentativa ${4 - retries}/3 de conexão com banco...`);
+      console.log(`🔄 Tentativa ${6 - retries}/5 de conexão com banco...`);
       
-      const result = await pool.query('SELECT NOW() as timestamp, version() as version');
+      // Teste básico de conexão
+      const client = await pool.connect();
+      console.log('✅ Cliente conectado com sucesso');
+      
+      // Teste de query
+      const result = await client.query('SELECT NOW() as timestamp, version() as version');
+      console.log('✅ Query executada com sucesso');
+      
+      client.release();
+      console.log('✅ Cliente liberado');
       
       console.log('✅ === CONEXÃO COM BANCO ESTABELECIDA COM SUCESSO ===');
       console.log('🕐 Timestamp:', result.rows[0].timestamp);
-      console.log('🗄️ Versão PostgreSQL:', result.rows[0].version);
+      console.log('🗄️ Versão PostgreSQL:', result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]);
       console.log('📊 Pool status:', {
         total: pool.totalCount,
         idle: pool.idleCount,
         waiting: pool.waitingCount
       });
       
-      // Testar se tabela usuarios existe
+      // Testar se tabelas principais existem
       try {
-        const tableTest = await pool.query("SELECT COUNT(*) FROM usuarios LIMIT 1");
-        console.log('✅ Tabela usuarios acessível');
-      } catch (tableError) {
-        if (tableError.code === '42P01') {
-          console.log('⚠️ Tabela usuarios não existe - será necessário criar');
-        } else {
-          console.log('⚠️ Erro ao acessar tabela usuarios:', tableError.message);
+        const tables = ['usuarios', 'produtos', 'fornecedores', 'afiliados', 'vendas', 'kits', 'conjuntos'];
+        const client2 = await pool.connect();
+        
+        for (const tableName of tables) {
+          try {
+            await client2.query(`SELECT COUNT(*) FROM ${tableName} LIMIT 1`);
+            console.log(`✅ Tabela ${tableName} acessível`);
+          } catch (tableError) {
+            if (tableError.code === '42P01') {
+              console.log(`⚠️ Tabela ${tableName} não existe`);
+            } else {
+              console.log(`⚠️ Erro ao acessar tabela ${tableName}:`, tableError.message);
+            }
+          }
         }
+        
+        client2.release();
+        
+      } catch (tableTestError) {
+        console.log('⚠️ Erro no teste de tabelas:', tableTestError.message);
       }
       
       break;
       
     } catch (error) {
       retries--;
-      console.error(`❌ Tentativa ${4 - retries}/3 falhou:`, error.message);
+      console.error(`❌ Tentativa ${6 - retries}/5 falhou:`, error.message);
       console.error('Code:', error.code);
       
       if (retries === 0) {
@@ -142,8 +161,8 @@ const testInitialConnection = async () => {
         // Não sair do processo, mas avisar
         console.error('⚠️ Aplicação continuará, mas banco não está disponível');
       } else {
-        console.log(`⏳ Aguardando 2s antes da próxima tentativa...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`⏳ Aguardando 3s antes da próxima tentativa...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
   }

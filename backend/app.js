@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -7,6 +6,25 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Middleware de logging detalhado
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  const method = req.method;
+  const url = req.originalUrl;
+  const ip = req.ip || req.connection.remoteAddress;
+  
+  console.log(`📥 ${timestamp} - ${method} ${url} from ${ip}`);
+  
+  // Log do body em requests POST/PUT (sem mostrar senhas)
+  if (['POST', 'PUT', 'PATCH'].includes(method) && req.body) {
+    const logBody = { ...req.body };
+    if (logBody.password) logBody.password = '***';
+    console.log(`📤 Body:`, logBody);
+  }
+  
+  next();
+});
 
 // Middlewares de segurança
 app.use(helmet());
@@ -28,12 +46,6 @@ app.use(limiter);
 // Middleware para parsing JSON
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Middleware de logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
 
 // Importar rotas
 const authRoutes = require('./routes/auth');
@@ -132,18 +144,37 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Middleware de tratamento de erros
+// Middleware de tratamento de erros MELHORADO
 app.use((err, req, res, next) => {
-  console.error('Erro não tratado:', err);
+  const timestamp = new Date().toISOString();
+  console.error('💥 === ERRO NÃO TRATADO ===');
+  console.error('🕐 Timestamp:', timestamp);
+  console.error('🌐 URL:', req.originalUrl);
+  console.error('📥 Method:', req.method);
+  console.error('💀 Erro:', err);
+  console.error('📊 Stack:', err.stack);
+  
+  // Log específico por tipo de erro
+  if (err.code) {
+    console.error('🔢 Error Code:', err.code);
+  }
+  
+  if (err.name) {
+    console.error('📛 Error Name:', err.name);
+  }
+  
   res.status(500).json({ 
     error: 'Erro interno do servidor',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Algo deu errado',
-    timestamp: new Date().toISOString()
+    timestamp: timestamp,
+    path: req.originalUrl,
+    method: req.method
   });
 });
 
 // Middleware para rotas não encontradas
 app.use('*', (req, res) => {
+  console.log('❓ Rota não encontrada:', req.method, req.originalUrl);
   res.status(404).json({ 
     error: 'Rota não encontrada',
     path: req.originalUrl,

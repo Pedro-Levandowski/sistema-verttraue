@@ -1,10 +1,14 @@
-
 const pool = require('../config/database');
 
 // Listar todas as vendas
 const getAllVendas = async (req, res) => {
   try {
-    console.log('💰 Buscando todas as vendas...');
+    console.log('💰 === INICIANDO BUSCA DE VENDAS ===');
+    console.log('💰 Pool status:', {
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount
+    });
     
     const result = await pool.query(`
       SELECT 
@@ -16,10 +20,25 @@ const getAllVendas = async (req, res) => {
     `);
 
     console.log(`✅ ${result.rows.length} vendas encontradas`);
+    console.log('📋 Vendas:', result.rows.map(v => ({ id: v.id, total: v.total, data: v.data_venda })));
+    
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Erro ao buscar vendas:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('❌ === ERRO DETALHADO NA BUSCA DE VENDAS ===');
+    console.error('❌ Tipo do erro:', error.constructor.name);
+    console.error('❌ Código do erro:', error.code);
+    console.error('❌ Mensagem:', error.message);
+    console.error('❌ Stack:', error.stack);
+    console.error('❌ Query state:', error.query);
+    
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: process.env.NODE_ENV === 'development' ? {
+        type: error.constructor.name,
+        code: error.code,
+        message: error.message
+      } : undefined
+    });
   }
 };
 
