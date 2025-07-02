@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,12 +25,37 @@ interface EstoquePageProps {
 }
 
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
-  const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
-  const { suppliers } = useSuppliers();
-  const { affiliates } = useAffiliates();
-  const { kits, loading: kitsLoading, createKit, updateKit, deleteKit } = useKits();
-  const { conjuntos, loading: conjuntosLoading, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
+  console.log('🚀 [EstoquePage] Inicializando componente...');
 
+  // Hooks com tratamento de erro seguro
+  const { 
+    products = [], 
+    loading: productsLoading = false, 
+    error: productsError, 
+    createProduct, 
+    updateProduct, 
+    deleteProduct 
+  } = useProducts() || {};
+
+  const { suppliers = [] } = useSuppliers() || {};
+  const { affiliates = [] } = useAffiliates() || {};
+  const { 
+    kits = [], 
+    loading: kitsLoading = false, 
+    createKit, 
+    updateKit, 
+    deleteKit 
+  } = useKits() || {};
+
+  const { 
+    conjuntos = [], 
+    loading: conjuntosLoading = false, 
+    createConjunto, 
+    updateConjunto, 
+    deleteConjunto 
+  } = useConjuntos() || {};
+
+  // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
   const [showModal, setShowModal] = useState(false);
   const [showKitModal, setShowKitModal] = useState(false);
@@ -50,102 +74,123 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     onConfirm: () => void;
   } | null>(null);
 
-  const filteredProducts = products.filter(product =>
-    product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  console.log('📊 [EstoquePage] Estado atual:', {
+    productsCount: products?.length || 0,
+    productsLoading,
+    productsError,
+    kitsCount: kits?.length || 0,
+    conjuntosCount: conjuntos?.length || 0
+  });
 
-  const filteredKits = kits.filter(kit =>
-    kit.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kit.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtros seguros
+  const filteredProducts = Array.isArray(products) ? products.filter(product =>
+    product?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product?.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+  ) : [];
 
-  const filteredConjuntos = conjuntos.filter(conjunto =>
-    conjunto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conjunto.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredKits = Array.isArray(kits) ? kits.filter(kit =>
+    kit?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    kit?.id?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
+  const filteredConjuntos = Array.isArray(conjuntos) ? conjuntos.filter(conjunto =>
+    conjunto?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conjunto?.id?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
+
+  // Handlers com tratamento de erro
   const handleEdit = (product: Product) => {
-    console.log('🔧 Editando produto:', product.id);
-    setEditingProduct(product);
-    setShowModal(true);
+    try {
+      console.log('🔧 [EstoquePage] Editando produto:', product?.id);
+      setEditingProduct(product);
+      setShowModal(true);
+    } catch (error) {
+      console.error('❌ [EstoquePage] Erro ao editar produto:', error);
+    }
   };
 
   const handleDelete = (product: Product) => {
-    console.log('🗑️ Solicitando exclusão do produto:', product.id);
-    setConfirmAction({
-      title: 'Confirmar Exclusão',
-      message: `Tem certeza que deseja excluir o produto "${product.nome}"? Esta ação não pode ser desfeita.`,
-      onConfirm: async () => {
-        try {
-          await deleteProduct(product.id);
-          console.log('✅ Produto excluído com sucesso');
-        } catch (error) {
-          console.error('❌ Erro ao excluir produto:', error);
-          alert('Erro ao excluir produto. Verifique o console para mais detalhes.');
+    try {
+      console.log('🗑️ [EstoquePage] Solicitando exclusão do produto:', product?.id);
+      setConfirmAction({
+        title: 'Confirmar Exclusão',
+        message: `Tem certeza que deseja excluir o produto "${product?.nome || 'N/A'}"? Esta ação não pode ser desfeita.`,
+        onConfirm: async () => {
+          try {
+            if (deleteProduct) {
+              await deleteProduct(product.id);
+              console.log('✅ [EstoquePage] Produto excluído com sucesso');
+            }
+          } catch (error) {
+            console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
+            alert('Erro ao excluir produto. Verifique o console para mais detalhes.');
+          }
         }
-      }
-    });
-    setShowConfirmModal(true);
+      });
+      setShowConfirmModal(true);
+    } catch (error) {
+      console.error('❌ [EstoquePage] Erro ao preparar exclusão:', error);
+    }
   };
 
   const handleViewDetails = (product: Product) => {
-    console.log('👁️ Visualizando detalhes do produto:', product.id);
-    setSelectedProduct(product);
-    setShowProductInfoModal(true);
+    try {
+      console.log('👁️ [EstoquePage] Visualizando detalhes do produto:', product?.id);
+      setSelectedProduct(product);
+      setShowProductInfoModal(true);
+    } catch (error) {
+      console.error('❌ [EstoquePage] Erro ao visualizar detalhes:', error);
+    }
   };
 
   const handleSave = async (productData: any) => {
     try {
-      console.log('💾 Salvando produto:', productData);
-      if (editingProduct) {
+      console.log('💾 [EstoquePage] Salvando produto:', productData);
+      if (editingProduct && updateProduct) {
         await updateProduct(editingProduct.id, productData);
-        console.log('✅ Produto atualizado com sucesso');
-      } else {
+        console.log('✅ [EstoquePage] Produto atualizado com sucesso');
+      } else if (createProduct) {
         await createProduct(productData);
-        console.log('✅ Produto criado com sucesso');
+        console.log('✅ [EstoquePage] Produto criado com sucesso');
       }
       setEditingProduct(null);
       setShowModal(false);
     } catch (error) {
-      console.error('❌ Erro ao salvar produto:', error);
+      console.error('❌ [EstoquePage] Erro ao salvar produto:', error);
       alert('Erro ao salvar produto. Verifique o console para mais detalhes.');
     }
   };
 
+  // Outros handlers similares...
   const handleKitSave = async (kitData: any) => {
     try {
-      console.log('💾 Salvando kit:', kitData);
-      if (editingKit) {
+      console.log('💾 [EstoquePage] Salvando kit:', kitData);
+      if (editingKit && updateKit) {
         await updateKit(editingKit.id, kitData);
-        console.log('✅ Kit atualizado com sucesso');
-      } else {
+      } else if (createKit) {
         await createKit(kitData);
-        console.log('✅ Kit criado com sucesso');
       }
       setEditingKit(null);
       setShowKitModal(false);
     } catch (error) {
-      console.error('❌ Erro ao salvar kit:', error);
+      console.error('❌ [EstoquePage] Erro ao salvar kit:', error);
       alert('Erro ao salvar kit. Verifique o console para mais detalhes.');
     }
   };
 
   const handleConjuntoSave = async (conjuntoData: any) => {
     try {
-      console.log('💾 Salvando conjunto:', conjuntoData);
-      if (editingConjunto) {
+      console.log('💾 [EstoquePage] Salvando conjunto:', conjuntoData);
+      if (editingConjunto && updateConjunto) {
         await updateConjunto(editingConjunto.id, conjuntoData);
-        console.log('✅ Conjunto atualizado com sucesso');
-      } else {
+      } else if (createConjunto) {
         await createConjunto(conjuntoData);
-        console.log('✅ Conjunto criado com sucesso');
       }
       setEditingConjunto(null);
       setShowConjuntoModal(false);
     } catch (error) {
-      console.error('❌ Erro ao salvar conjunto:', error);
+      console.error('❌ [EstoquePage] Erro ao salvar conjunto:', error);
       alert('Erro ao salvar conjunto. Verifique o console para mais detalhes.');
     }
   };
@@ -154,22 +199,21 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     if (!selectedProduct) return;
     
     try {
-      console.log('📦 Atualizando estoque do afiliado:', { affiliateId, quantity });
+      console.log('📦 [EstoquePage] Atualizando estoque do afiliado:', { affiliateId, quantity });
       await estoqueAPI.updateAfiliadoEstoque(selectedProduct.id, affiliateId, quantity);
-      console.log('✅ Estoque do afiliado atualizado');
-      // Refresh products data
+      console.log('✅ [EstoquePage] Estoque do afiliado atualizado');
       window.location.reload();
     } catch (error) {
-      console.error('❌ Erro ao atualizar estoque do afiliado:', error);
+      console.error('❌ [EstoquePage] Erro ao atualizar estoque do afiliado:', error);
       alert('Erro ao atualizar estoque do afiliado');
     }
   };
 
-  // Renderização com tratamento de erro
+  // Tratamento de erro crítico
   if (productsError) {
-    console.error('❌ Erro na página de estoque:', productsError);
+    console.error('❌ [EstoquePage] Erro crítico na página de estoque:', productsError);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <Header title="Gestão de Estoque" onBack={onBack} />
         <div className="container mx-auto p-6">
           <Alert className="border-red-200 bg-red-50">
@@ -179,7 +223,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           </Alert>
           <Button 
             onClick={() => window.location.reload()} 
-            className="mt-4 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+            className="mt-4 bg-blue-600 hover:bg-blue-700"
           >
             Tentar Novamente
           </Button>
@@ -188,11 +232,14 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     );
   }
 
+  console.log('🎨 [EstoquePage] Renderizando interface...');
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Header title="Gestão de Estoque" onBack={onBack} />
 
       <div className="container mx-auto p-6">
+        {/* Indicador de carregamento */}
         {productsLoading && (
           <Alert className="mb-4">
             <AlertDescription>Carregando produtos do banco de dados...</AlertDescription>
@@ -201,15 +248,15 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full flex justify-center">
-            <TabsTrigger value="produtos" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+            <TabsTrigger value="produtos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               <Package className="w-4 h-4 mr-2" />
               Produtos
             </TabsTrigger>
-            <TabsTrigger value="kits" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+            <TabsTrigger value="kits" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               <Gift className="w-4 h-4 mr-2" />
               Kits
             </TabsTrigger>
-            <TabsTrigger value="conjuntos" className="data-[state=active]:bg-vertttraue-primary data-[state=active]:text-white">
+            <TabsTrigger value="conjuntos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               <Layers className="w-4 h-4 mr-2" />
               Conjuntos
             </TabsTrigger>
@@ -224,30 +271,30 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             />
             <Button
               onClick={() => {
-                console.log('➕ Abrindo modal de novo produto');
+                console.log('➕ [EstoquePage] Abrindo modal de novo produto');
                 setShowModal(true);
               }}
-              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              className="bg-blue-600 hover:bg-blue-700"
               disabled={productsLoading}
             >
               Novo Produto
             </Button>
             <Button
               onClick={() => {
-                console.log('➕ Abrindo modal de novo kit');
+                console.log('➕ [EstoquePage] Abrindo modal de novo kit');
                 setShowKitModal(true);
               }}
-              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              className="bg-blue-600 hover:bg-blue-700"
               disabled={kitsLoading}
             >
               Novo Kit
             </Button>
             <Button
               onClick={() => {
-                console.log('➕ Abrindo modal de novo conjunto');
+                console.log('➕ [EstoquePage] Abrindo modal de novo conjunto');
                 setShowConjuntoModal(true);
               }}
-              className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+              className="bg-blue-600 hover:bg-blue-700"
               disabled={conjuntosLoading}
             >
               Novo Conjunto
@@ -256,7 +303,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
           <TabsContent value="produtos">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
+              <h2 className="text-xl font-bold mb-4 text-blue-800">
                 Produtos em Estoque ({filteredProducts.length})
               </h2>
               
@@ -290,7 +337,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                               <Badge variant="outline">S: {product.estoque_site}</Badge>
                             </div>
                           </td>
-                          <td className="p-3 font-bold text-vertttraue-primary">
+                          <td className="p-3 font-bold text-blue-600">
                             R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="p-3">
@@ -307,7 +354,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleEdit(product)}
-                                className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                                className="hover:bg-blue-600 hover:text-white text-xs"
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -490,6 +537,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         </Tabs>
       </div>
 
+      {/* Modais */}
       <ProdutoModal
         isOpen={showModal}
         onClose={() => {

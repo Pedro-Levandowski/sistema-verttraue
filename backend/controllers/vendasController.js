@@ -1,12 +1,18 @@
 
 const pool = require('../config/database');
 
-// Listar todas as vendas
+// Listar todas as vendas - versão simplificada
 const getVendas = async (req, res) => {
-  console.log('📊 === BUSCANDO TODAS AS VENDAS ===');
+  console.log('📊 [Controller] === BUSCANDO VENDAS (SIMPLIFICADO) ===');
   
   try {
-    // Verificar se a tabela vendas existe
+    // Primeiro, verificar se conseguimos conectar no banco
+    console.log('🔍 [Controller] Testando conexão com banco...');
+    await pool.query('SELECT 1');
+    console.log('✅ [Controller] Conexão com banco OK');
+
+    // Verificar se tabela vendas existe
+    console.log('🔍 [Controller] Verificando se tabela vendas existe...');
     const tableCheck = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -15,103 +21,51 @@ const getVendas = async (req, res) => {
     `);
     
     if (!tableCheck.rows[0].exists) {
-      console.log('⚠️ Tabela vendas não existe ainda, retornando array vazio');
+      console.log('⚠️ [Controller] Tabela vendas não existe, retornando array vazio');
       return res.json([]);
     }
+    console.log('✅ [Controller] Tabela vendas existe');
 
-    // Verificar se existem dados na tabela
-    const countQuery = 'SELECT COUNT(*) as total FROM vendas';
-    const countResult = await pool.query(countQuery);
-    const totalVendas = parseInt(countResult.rows[0].total);
-    
-    console.log(`📈 Total de vendas no banco: ${totalVendas}`);
-    
-    if (totalVendas === 0) {
-      console.log('ℹ️ Nenhuma venda encontrada, retornando array vazio');
-      return res.json([]);
-    }
-    
-    const query = `
+    // Buscar vendas básicas primeiro
+    console.log('🔍 [Controller] Buscando vendas básicas...');
+    const basicQuery = `
       SELECT 
-        v.id,
-        v.data_venda,
-        v.valor_total,
-        v.observacoes,
-        v.created_at,
-        v.afiliado_id,
-        a.nome_completo as afiliado_nome,
-        a.email as afiliado_email
-      FROM vendas v
-      LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      ORDER BY v.created_at DESC
-      LIMIT 100
+        id,
+        data_venda,
+        valor_total,
+        observacoes,
+        created_at,
+        afiliado_id
+      FROM vendas 
+      ORDER BY created_at DESC 
+      LIMIT 50
     `;
     
-    console.log('🔍 Executando query de vendas');
-    const result = await pool.query(query);
+    const result = await pool.query(basicQuery);
+    console.log(`✅ [Controller] ${result.rows.length} vendas encontradas`);
     
-    console.log(`✅ Vendas encontradas: ${result.rows.length}`);
+    // Retornar dados simples
+    const vendas = result.rows.map(venda => ({
+      ...venda,
+      afiliado_nome: null, // Simplificado por enquanto
+      afiliado_email: null,
+      itens: [] // Simplificado por enquanto
+    }));
     
-    // Buscar itens para cada venda de forma mais segura
-    const vendasComItens = [];
-    
-    for (const venda of result.rows) {
-      try {
-        const itensQuery = `
-          SELECT 
-            vi.id,
-            vi.produto_id,
-            vi.kit_id,
-            vi.conjunto_id,
-            vi.quantidade,
-            vi.preco_unitario,
-            vi.item_nome,
-            vi.item_tipo,
-            p.nome as produto_nome
-          FROM venda_itens vi
-          LEFT JOIN produtos p ON vi.produto_id = p.id
-          WHERE vi.venda_id = $1
-        `;
-        
-        const itensResult = await pool.query(itensQuery, [venda.id]);
-        
-        vendasComItens.push({
-          ...venda,
-          itens: itensResult.rows || []
-        });
-      } catch (itemError) {
-        console.error(`❌ Erro ao buscar itens da venda ${venda.id}:`, itemError);
-        // Continuar sem os itens se houver erro
-        vendasComItens.push({
-          ...venda,
-          itens: []
-        });
-      }
-    }
-    
-    console.log('✅ Vendas processadas com sucesso');
-    res.json(vendasComItens);
+    console.log('✅ [Controller] Retornando vendas processadas');
+    res.json(vendas);
     
   } catch (error) {
-    console.error('❌ === ERRO AO BUSCAR VENDAS ===');
-    console.error('Erro completo:', error);
-    console.error('Message:', error.message);
-    console.error('Code:', error.code);
+    console.error('❌ [Controller] === ERRO COMPLETO ===');
+    console.error('❌ [Controller] Erro:', error);
+    console.error('❌ [Controller] Message:', error.message);
+    console.error('❌ [Controller] Code:', error.code);
+    console.error('❌ [Controller] Stack:', error.stack);
     
-    // Se for erro de tabela não existir, retornar array vazio
-    if (error.code === '42P01' || error.message.includes('does not exist')) {
-      console.log('⚠️ Tabela vendas não existe, retornando array vazio');
-      return res.json([]);
-    }
-    
-    // Retornar erro mais específico
-    const errorMessage = error.code === 'ECONNREFUSED' ? 
-      'Erro de conexão com o banco de dados' : 
-      `Erro interno: ${error.message}`;
-    
+    // Resposta de erro mais clara
     res.status(500).json({ 
       error: 'Erro ao buscar vendas',
-      details: errorMessage,
+      details: error.message || 'Erro interno do servidor',
       code: error.code || 'UNKNOWN'
     });
   }
@@ -121,16 +75,10 @@ const getVendas = async (req, res) => {
 const getVendaById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔍 Buscando venda ID:', id);
+    console.log('🔍 [Controller] Buscando venda ID:', id);
     
     const vendaQuery = `
-      SELECT 
-        v.*,
-        a.nome_completo as afiliado_nome,
-        a.email as afiliado_email
-      FROM vendas v
-      LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      WHERE v.id = $1
+      SELECT * FROM vendas WHERE id = $1
     `;
     
     const vendaResult = await pool.query(vendaQuery, [id]);
@@ -139,26 +87,10 @@ const getVendaById = async (req, res) => {
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
     
-    const venda = vendaResult.rows[0];
-    
-    // Buscar itens da venda
-    const itensQuery = `
-      SELECT 
-        vi.*,
-        p.nome as produto_nome,
-        p.codigo as produto_codigo
-      FROM venda_itens vi
-      LEFT JOIN produtos p ON vi.produto_id = p.id
-      WHERE vi.venda_id = $1
-    `;
-    
-    const itensResult = await pool.query(itensQuery, [id]);
-    venda.itens = itensResult.rows;
-    
-    console.log('✅ Venda encontrada');
-    res.json(venda);
+    console.log('✅ [Controller] Venda encontrada');
+    res.json(vendaResult.rows[0]);
   } catch (error) {
-    console.error('❌ Erro ao buscar venda:', error);
+    console.error('❌ [Controller] Erro ao buscar venda:', error);
     res.status(500).json({
       error: 'Erro ao buscar venda',
       details: error.message
@@ -170,32 +102,19 @@ const getVendaById = async (req, res) => {
 const getVendasPorPeriodo = async (req, res) => {
   try {
     const { data_inicio, data_fim } = req.query;
-    console.log('🔍 Buscando vendas por período:', { data_inicio, data_fim });
+    console.log('🔍 [Controller] Buscando vendas por período:', { data_inicio, data_fim });
     
-    let query = `
-      SELECT 
-        v.id,
-        v.data_venda,
-        v.valor_total,
-        v.observacoes,
-        v.afiliado_id,
-        v.created_at,
-        a.nome_completo as afiliado_nome,
-        a.email as afiliado_email
-      FROM vendas v
-      LEFT JOIN afiliados a ON v.afiliado_id = a.id
-    `;
-    
+    let query = `SELECT * FROM vendas`;
     const params = [];
     const conditions = [];
     
     if (data_inicio) {
-      conditions.push(`v.data_venda >= $${params.length + 1}`);
+      conditions.push(`data_venda >= $${params.length + 1}`);
       params.push(data_inicio);
     }
     
     if (data_fim) {
-      conditions.push(`v.data_venda <= $${params.length + 1}`);
+      conditions.push(`data_venda <= $${params.length + 1}`);
       params.push(data_fim);
     }
     
@@ -203,14 +122,14 @@ const getVendasPorPeriodo = async (req, res) => {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
     
-    query += ` ORDER BY v.data_venda DESC, v.created_at DESC`;
+    query += ` ORDER BY data_venda DESC`;
     
     const result = await pool.query(query, params);
-    console.log(`✅ Encontradas ${result.rows.length} vendas no período`);
+    console.log(`✅ [Controller] Encontradas ${result.rows.length} vendas no período`);
     
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Erro ao buscar vendas por período:', error);
+    console.error('❌ [Controller] Erro ao buscar vendas por período:', error);
     res.status(500).json({
       error: 'Erro ao buscar vendas por período',
       details: error.message
@@ -224,11 +143,10 @@ const createVenda = async (req, res) => {
   
   try {
     await client.query('BEGIN');
-    console.log('🆕 Criando nova venda...');
+    console.log('🆕 [Controller] Criando nova venda...');
     
     const { afiliado_id, data_venda, valor_total, observacoes, itens } = req.body;
     
-    // Inserir venda
     const vendaQuery = `
       INSERT INTO vendas (afiliado_id, data_venda, valor_total, observacoes)
       VALUES ($1, $2, $3, $4)
@@ -243,9 +161,9 @@ const createVenda = async (req, res) => {
     ]);
     
     const venda = vendaResult.rows[0];
-    console.log('✅ Venda criada:', venda.id);
+    console.log('✅ [Controller] Venda criada:', venda.id);
     
-    // Inserir itens da venda se existirem
+    // Processar itens se existirem
     if (itens && itens.length > 0) {
       for (const item of itens) {
         const itemQuery = `
@@ -261,14 +179,14 @@ const createVenda = async (req, res) => {
           item.subtotal
         ]);
       }
-      console.log(`✅ ${itens.length} itens adicionados à venda`);
+      console.log(`✅ [Controller] ${itens.length} itens adicionados à venda`);
     }
     
     await client.query('COMMIT');
     res.status(201).json(venda);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Erro ao criar venda:', error);
+    console.error('❌ [Controller] Erro ao criar venda:', error);
     res.status(500).json({
       error: 'Erro ao criar venda',
       details: error.message
@@ -284,7 +202,7 @@ const updateVenda = async (req, res) => {
     const { id } = req.params;
     const { afiliado_id, data_venda, valor_total, observacoes } = req.body;
     
-    console.log('🔄 Atualizando venda:', id);
+    console.log('🔄 [Controller] Atualizando venda:', id);
     
     const query = `
       UPDATE vendas 
@@ -305,10 +223,10 @@ const updateVenda = async (req, res) => {
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
     
-    console.log('✅ Venda atualizada');
+    console.log('✅ [Controller] Venda atualizada');
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Erro ao atualizar venda:', error);
+    console.error('❌ [Controller] Erro ao atualizar venda:', error);
     res.status(500).json({
       error: 'Erro ao atualizar venda',
       details: error.message
@@ -324,9 +242,9 @@ const deleteVenda = async (req, res) => {
     await client.query('BEGIN');
     const { id } = req.params;
     
-    console.log('🗑️ Deletando venda:', id);
+    console.log('🗑️ [Controller] Deletando venda:', id);
     
-    // Deletar itens da venda primeiro
+    // Deletar itens primeiro
     await client.query('DELETE FROM venda_itens WHERE venda_id = $1', [id]);
     
     // Deletar venda
@@ -338,11 +256,11 @@ const deleteVenda = async (req, res) => {
     }
     
     await client.query('COMMIT');
-    console.log('✅ Venda deletada');
+    console.log('✅ [Controller] Venda deletada');
     res.json({ message: 'Venda deletada com sucesso' });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Erro ao deletar venda:', error);
+    console.error('❌ [Controller] Erro ao deletar venda:', error);
     res.status(500).json({
       error: 'Erro ao deletar venda',
       details: error.message

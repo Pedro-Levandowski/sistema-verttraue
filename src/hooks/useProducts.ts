@@ -9,64 +9,75 @@ export const useProducts = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProducts = async () => {
+    console.log('🔄 [useProducts] Iniciando busca de produtos...');
     try {
-      console.log('🔄 Buscando produtos...');
       setLoading(true);
       setError(null);
       
+      console.log('🔄 [useProducts] Fazendo chamada para API...');
       const data = await productsAPI.getAll();
-      console.log(`✅ ${data.length} produtos carregados`);
+      console.log('✅ [useProducts] Dados recebidos:', data);
       
-      setProducts(data || []);
+      // Garantir que sempre temos um array válido
+      if (Array.isArray(data)) {
+        setProducts(data);
+        console.log(`✅ [useProducts] ${data.length} produtos carregados com sucesso`);
+      } else {
+        console.warn('⚠️ [useProducts] Dados não são um array, usando array vazio');
+        setProducts([]);
+      }
     } catch (err) {
+      console.error('❌ [useProducts] Erro capturado:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar produtos';
-      console.error('❌ Erro ao buscar produtos:', errorMessage);
+      console.error('❌ [useProducts] Mensagem de erro:', errorMessage);
       setError(errorMessage);
-      setProducts([]); // Garantir que seja um array vazio em caso de erro
+      setProducts([]); // Sempre garantir array vazio em caso de erro
     } finally {
       setLoading(false);
+      console.log('🏁 [useProducts] Busca finalizada');
     }
   };
 
   const createProduct = async (productData: Omit<Product, 'id'>) => {
+    console.log('➕ [useProducts] Criando produto:', productData.nome);
     try {
-      console.log('➕ Criando produto:', productData.nome);
       const newProduct = await productsAPI.create(productData);
       setProducts(prev => [...prev, newProduct]);
-      console.log('✅ Produto criado com sucesso');
+      console.log('✅ [useProducts] Produto criado com sucesso');
       return newProduct;
     } catch (err) {
-      console.error('❌ Erro ao criar produto:', err);
+      console.error('❌ [useProducts] Erro ao criar produto:', err);
       throw err;
     }
   };
 
   const updateProduct = async (id: string, productData: Partial<Product>) => {
+    console.log('🔄 [useProducts] Atualizando produto:', id);
     try {
-      console.log('🔄 Atualizando produto:', id);
       const updatedProduct = await productsAPI.update(id, productData);
       setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
-      console.log('✅ Produto atualizado com sucesso');
+      console.log('✅ [useProducts] Produto atualizado com sucesso');
       return updatedProduct;
     } catch (err) {
-      console.error('❌ Erro ao atualizar produto:', err);
+      console.error('❌ [useProducts] Erro ao atualizar produto:', err);
       throw err;
     }
   };
 
   const deleteProduct = async (id: string) => {
+    console.log('🗑️ [useProducts] Deletando produto:', id);
     try {
-      console.log('🗑️ Deletando produto:', id);
       await productsAPI.delete(id);
       setProducts(prev => prev.filter(p => p.id !== id));
-      console.log('✅ Produto deletado com sucesso');
+      console.log('✅ [useProducts] Produto deletado com sucesso');
     } catch (err) {
-      console.error('❌ Erro ao deletar produto:', err);
+      console.error('❌ [useProducts] Erro ao deletar produto:', err);
       throw err;
     }
   };
 
   useEffect(() => {
+    console.log('🚀 [useProducts] Inicializando hook...');
     fetchProducts();
   }, []);
 

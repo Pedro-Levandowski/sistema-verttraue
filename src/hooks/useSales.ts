@@ -9,64 +9,75 @@ export const useSales = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchSales = async () => {
+    console.log('🔄 [useSales] Iniciando busca de vendas...');
     try {
-      console.log('🔄 Buscando vendas...');
       setLoading(true);
       setError(null);
       
+      console.log('🔄 [useSales] Fazendo chamada para API...');
       const data = await salesAPI.getAll();
-      console.log(`✅ ${data.length} vendas carregadas`);
+      console.log('✅ [useSales] Dados recebidos:', data);
       
-      setSales(Array.isArray(data) ? data : []);
+      // Garantir que sempre temos um array válido
+      if (Array.isArray(data)) {
+        setSales(data);
+        console.log(`✅ [useSales] ${data.length} vendas carregadas com sucesso`);
+      } else {
+        console.warn('⚠️ [useSales] Dados não são um array, usando array vazio');
+        setSales([]);
+      }
     } catch (err) {
+      console.error('❌ [useSales] Erro capturado:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar vendas';
-      console.error('❌ Erro ao buscar vendas:', errorMessage);
+      console.error('❌ [useSales] Mensagem de erro:', errorMessage);
       setError(errorMessage);
-      setSales([]); // Garantir que seja um array vazio em caso de erro
+      setSales([]); // Sempre garantir array vazio em caso de erro
     } finally {
       setLoading(false);
+      console.log('🏁 [useSales] Busca finalizada');
     }
   };
 
   const createSale = async (saleData: any) => {
+    console.log('➕ [useSales] Criando venda:', saleData);
     try {
-      console.log('➕ Criando venda:', saleData);
       const newSale = await salesAPI.create(saleData);
       setSales(prev => [...prev, newSale]);
-      console.log('✅ Venda criada com sucesso');
+      console.log('✅ [useSales] Venda criada com sucesso');
       return newSale;
     } catch (err) {
-      console.error('❌ Erro ao criar venda:', err);
+      console.error('❌ [useSales] Erro ao criar venda:', err);
       throw err;
     }
   };
 
   const updateSale = async (id: string, saleData: any) => {
+    console.log('🔄 [useSales] Atualizando venda:', id);
     try {
-      console.log('🔄 Atualizando venda:', id);
       const updatedSale = await salesAPI.update(id, saleData);
       setSales(prev => prev.map(s => s.id === id ? updatedSale : s));
-      console.log('✅ Venda atualizada com sucesso');
+      console.log('✅ [useSales] Venda atualizada com sucesso');
       return updatedSale;
     } catch (err) {
-      console.error('❌ Erro ao atualizar venda:', err);
+      console.error('❌ [useSales] Erro ao atualizar venda:', err);
       throw err;
     }
   };
 
   const deleteSale = async (id: string) => {
+    console.log('🗑️ [useSales] Deletando venda:', id);
     try {
-      console.log('🗑️ Deletando venda:', id);
       await salesAPI.delete(id);
       setSales(prev => prev.filter(s => s.id !== id));
-      console.log('✅ Venda deletada com sucesso');
+      console.log('✅ [useSales] Venda deletada com sucesso');
     } catch (err) {
-      console.error('❌ Erro ao deletar venda:', err);
+      console.error('❌ [useSales] Erro ao deletar venda:', err);
       throw err;
     }
   };
 
   useEffect(() => {
+    console.log('🚀 [useSales] Inicializando hook...');
     fetchSales();
   }, []);
 
