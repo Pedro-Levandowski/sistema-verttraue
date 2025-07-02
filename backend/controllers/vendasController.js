@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Verificar se tabela existe
@@ -92,6 +91,83 @@ const getAllVendas = async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar vendas:', error);
     res.status(500).json({ error: 'Erro interno do servidor ao buscar vendas' });
+  }
+};
+
+// Buscar vendas por período
+const getVendasPorPeriodo = async (req, res) => {
+  try {
+    const { dataInicio, dataFim } = req.query;
+    console.log('🛒 Buscando vendas por período:', { dataInicio, dataFim });
+
+    const vendasExists = await checkTableExists('vendas');
+    if (!vendasExists) {
+      console.log('⚠️ Tabela vendas não existe, retornando array vazio');
+      return res.json([]);
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        v.*,
+        a.nome_completo as afiliado_nome,
+        a.email as afiliado_email
+      FROM vendas v
+      LEFT JOIN afiliados a ON v.afiliado_id = a.id
+      WHERE v.data_venda BETWEEN $1 AND $2
+      ORDER BY v.created_at DESC
+    `, [dataInicio, dataFim]);
+
+    const vendas = [];
+    const vendaProdutosExists = await checkTableExists('venda_produtos');
+    
+    for (const row of result.rows) {
+      let produtos = [];
+      
+      if (vendaProdutosExists) {
+        try {
+          const produtosResult = await pool.query(`
+            SELECT 
+              vp.*,
+              p.nome as produto_nome,
+              p.preco as produto_preco
+            FROM venda_produtos vp
+            LEFT JOIN produtos p ON vp.produto_id = p.id
+            WHERE vp.venda_id = $1
+          `, [row.id]);
+          
+          produtos = produtosResult.rows;
+        } catch (error) {
+          console.error('❌ Erro ao buscar produtos da venda:', error);
+        }
+      }
+
+      vendas.push({
+        id: row.id,
+        data_venda: row.data_venda,
+        valor_total: parseFloat(row.valor_total) || 0,
+        status: row.status || 'pendente',
+        afiliado: row.afiliado_id ? {
+          id: row.afiliado_id,
+          nome: row.afiliado_nome || '',
+          email: row.afiliado_email || ''
+        } : null,
+        produtos: produtos.map(p => ({
+          id: p.produto_id,
+          nome: p.produto_nome || '',
+          quantidade: parseInt(p.quantidade) || 0,
+          preco_unitario: parseFloat(p.preco_unitario) || 0,
+          subtotal: parseFloat(p.subtotal) || 0
+        })),
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      });
+    }
+
+    console.log(`✅ ${vendas.length} vendas encontradas no período`);
+    res.json(vendas);
+  } catch (error) {
+    console.error('❌ Erro ao buscar vendas por período:', error);
+    res.status(500).json({ error: 'Erro interno do servidor ao buscar vendas por período' });
   }
 };
 
@@ -317,9 +393,10 @@ const deleteVenda = async (req, res) => {
 };
 
 module.exports = {
-  getAllVendas,
+  getVendas: getAllVendas,
   getVendaById,
   createVenda,
   updateVenda,
-  deleteVenda
+  deleteVenda,
+  getVendasPorPeriodo
 };
