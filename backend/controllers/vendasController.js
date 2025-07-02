@@ -1,35 +1,84 @@
-
 const pool = require('../config/database');
 
 // Listar todas as vendas
 const getVendas = async (req, res) => {
+  console.log('📊 === BUSCANDO TODAS AS VENDAS ===');
+  
   try {
-    console.log('🔍 === BUSCANDO VENDAS ===');
-    
     const query = `
       SELECT 
         v.id,
         v.data_venda,
         v.valor_total,
         v.observacoes,
-        v.afiliado_id,
         v.created_at,
         a.nome_completo as afiliado_nome,
         a.email as afiliado_email
       FROM vendas v
       LEFT JOIN afiliados a ON v.afiliado_id = a.id
-      ORDER BY v.data_venda DESC, v.created_at DESC
+      ORDER BY v.created_at DESC
     `;
     
+    console.log('🔍 Executando query:', query);
     const result = await pool.query(query);
-    console.log(`✅ Encontradas ${result.rows.length} vendas`);
     
-    res.json(result.rows);
+    console.log(`✅ Vendas encontradas: ${result.rows.length}`);
+    
+    // Se não há vendas, retornar array vazio
+    if (result.rows.length === 0) {
+      console.log('ℹ️ Nenhuma venda encontrada, retornando array vazio');
+      return res.json([]);
+    }
+    
+    // Buscar itens para cada venda
+    const vendasComItens = await Promise.all(
+      result.rows.map(async (venda) => {
+        try {
+          const itensQuery = `
+            SELECT 
+              vi.id,
+              vi.produto_id,
+              vi.kit_id,
+              vi.conjunto_id,
+              vi.quantidade,
+              vi.preco_unitario,
+              vi.item_nome,
+              vi.item_tipo,
+              p.nome as produto_nome
+            FROM venda_itens vi
+            LEFT JOIN produtos p ON vi.produto_id = p.id
+            WHERE vi.venda_id = $1
+          `;
+          
+          const itensResult = await pool.query(itensQuery, [venda.id]);
+          
+          return {
+            ...venda,
+            itens: itensResult.rows || []
+          };
+        } catch (itemError) {
+          console.error(`❌ Erro ao buscar itens da venda ${venda.id}:`, itemError);
+          return {
+            ...venda,
+            itens: []
+          };
+        }
+      })
+    );
+    
+    console.log('✅ Vendas processadas com sucesso');
+    res.json(vendasComItens);
+    
   } catch (error) {
-    console.error('❌ Erro ao buscar vendas:', error);
+    console.error('❌ === ERRO AO BUSCAR VENDAS ===');
+    console.error('Erro completo:', error);
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    
     res.status(500).json({ 
       error: 'Erro ao buscar vendas',
-      details: error.message 
+      details: error.message,
+      code: error.code
     });
   }
 };
@@ -272,8 +321,8 @@ const deleteVenda = async (req, res) => {
 module.exports = {
   getVendas,
   getVendaById,
-  getVendasPorPeriodo,
   createVenda,
   updateVenda,
-  deleteVenda
+  deleteVenda,
+  getVendasPorPeriodo
 };
