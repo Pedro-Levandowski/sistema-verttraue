@@ -17,11 +17,13 @@ const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({
   isOpen, 
   onClose, 
   sale, 
-  products, 
-  conjuntos, 
-  kits 
+  products = [], 
+  conjuntos = [], 
+  kits = [] 
 }) => {
   if (!sale) return null;
+
+  console.log('🚀 [VendaDetalhesModal] Sale data:', sale);
 
   const getItemName = (saleProduct: any) => {
     if (saleProduct.produto_id) {
@@ -36,57 +38,83 @@ const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({
       const kit = kits.find(k => k.id === saleProduct.kit_id);
       return kit?.nome || 'Kit não encontrado';
     }
-    return 'Item não identificado';
+    return saleProduct.nome || saleProduct.produto_nome || 'Item não identificado';
   };
 
   const getItemType = (saleProduct: any) => {
     if (saleProduct.produto_id) return 'Produto';
     if (saleProduct.conjunto_id) return 'Conjunto';
     if (saleProduct.kit_id) return 'Kit';
-    return 'Desconhecido';
+    return 'Produto';
+  };
+
+  // Garantir que temos dados válidos
+  const saleData = {
+    id: sale.id || 'N/A',
+    data_venda: sale.data_venda || sale.data || new Date().toISOString(),
+    valor_total: sale.valor_total || sale.total || 0,
+    tipo: sale.tipo || 'fisica',
+    afiliado: sale.afiliado || null,
+    afiliado_nome: sale.afiliado_nome || sale.afiliado?.nome_completo || null,
+    produtos: sale.produtos || []
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Detalhes da Venda - {sale.id}</DialogTitle>
+          <DialogTitle>Detalhes da Venda - {saleData.id}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h3 className="font-semibold text-vertttraue-primary">Informações Gerais</h3>
+              <h3 className="font-semibold text-blue-600">Informações Gerais</h3>
               <div className="space-y-2 mt-2">
-                <p><span className="font-medium">ID da Venda:</span> {sale.id}</p>
-                <p><span className="font-medium">Data:</span> {sale.data.toLocaleDateString('pt-BR')}</p>
+                <p><span className="font-medium">ID da Venda:</span> {saleData.id}</p>
+                <p><span className="font-medium">Data:</span> {
+                  saleData.data_venda ? new Date(saleData.data_venda).toLocaleDateString('pt-BR') : 'N/A'
+                }</p>
                 <p><span className="font-medium">Tipo:</span> 
-                  <Badge variant={sale.tipo === 'online' ? 'default' : 'secondary'} className="ml-2">
-                    {sale.tipo === 'online' ? 'Online' : 'Física'}
+                  <Badge variant={saleData.tipo === 'online' ? 'default' : 'secondary'} className="ml-2">
+                    {saleData.tipo === 'online' ? 'Online' : 'Física'}
                   </Badge>
                 </p>
                 <p><span className="font-medium">Total:</span> 
-                  <span className="font-bold text-vertttraue-primary ml-2">
-                    R$ {sale.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <span className="font-bold text-blue-600 ml-2">
+                    R$ {saleData.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </p>
               </div>
             </div>
             
             <div>
-              <h3 className="font-semibold text-vertttraue-primary">Afiliado</h3>
+              <h3 className="font-semibold text-blue-600">Afiliado</h3>
               <div className="space-y-2 mt-2">
-                {sale.afiliado ? (
+                {saleData.afiliado || saleData.afiliado_nome ? (
                   <>
-                    <p><span className="font-medium">Nome:</span> {sale.afiliado.nome_completo}</p>
-                    <p><span className="font-medium">Email:</span> {sale.afiliado.email}</p>
-                    <p><span className="font-medium">Telefone:</span> {sale.afiliado.telefone}</p>
-                    <p><span className="font-medium">Comissão:</span> {sale.afiliado.comissao}%</p>
-                    <p><span className="font-medium">Valor Comissão:</span> 
-                      <span className="font-bold text-green-600 ml-1">
-                        R$ {(sale.total * sale.afiliado.comissao / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                    </p>
+                    <p><span className="font-medium">Nome:</span> {
+                      saleData.afiliado?.nome_completo || 
+                      saleData.afiliado?.nome || 
+                      saleData.afiliado_nome || 
+                      'N/A'
+                    }</p>
+                    {saleData.afiliado?.email && (
+                      <p><span className="font-medium">Email:</span> {saleData.afiliado.email}</p>
+                    )}
+                    {saleData.afiliado?.telefone && (
+                      <p><span className="font-medium">Telefone:</span> {saleData.afiliado.telefone}</p>
+                    )}
+                    {saleData.afiliado?.comissao && (
+                      <>
+                        <p><span className="font-medium">Comissão:</span> {saleData.afiliado.comissao}%</p>
+                        <p><span className="font-medium">Valor Comissão:</span> 
+                          <span className="font-bold text-green-600 ml-1">
+                            R$ {(saleData.valor_total * saleData.afiliado.comissao / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                      </>
+                    )}
                   </>
                 ) : (
                   <p className="text-gray-500">Venda sem afiliado</p>
@@ -96,35 +124,42 @@ const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({
           </div>
 
           <div>
-            <h3 className="font-semibold text-vertttraue-primary">Itens da Venda</h3>
+            <h3 className="font-semibold text-blue-600">Itens da Venda</h3>
             <div className="mt-2">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Item</th>
-                    <th className="text-left p-2">Tipo</th>
-                    <th className="text-left p-2">Quantidade</th>
-                    <th className="text-left p-2">Preço Unitário</th>
-                    <th className="text-left p-2">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sale.produtos.map((saleProduct, index) => {
-                    const subtotal = saleProduct.quantidade * saleProduct.preco_unitario;
-                    return (
-                      <tr key={index} className="border-b">
-                        <td className="p-2">{getItemName(saleProduct)}</td>
-                        <td className="p-2">
-                          <Badge variant="outline">{getItemType(saleProduct)}</Badge>
-                        </td>
-                        <td className="p-2">{saleProduct.quantidade}</td>
-                        <td className="p-2">R$ {saleProduct.preco_unitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td className="p-2 font-semibold">R$ {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {saleData.produtos && saleData.produtos.length > 0 ? (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Item</th>
+                      <th className="text-left p-2">Tipo</th>
+                      <th className="text-left p-2">Quantidade</th>
+                      <th className="text-left p-2">Preço Unitário</th>
+                      <th className="text-left p-2">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleData.produtos.map((saleProduct: any, index: number) => {
+                      const quantidade = saleProduct.quantidade || 1;
+                      const precoUnitario = saleProduct.preco_unitario || saleProduct.preco || 0;
+                      const subtotal = saleProduct.subtotal || (quantidade * precoUnitario);
+                      
+                      return (
+                        <tr key={index} className="border-b">
+                          <td className="p-2">{getItemName(saleProduct)}</td>
+                          <td className="p-2">
+                            <Badge variant="outline">{getItemType(saleProduct)}</Badge>
+                          </td>
+                          <td className="p-2">{quantidade}</td>
+                          <td className="p-2">R$ {precoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                          <td className="p-2 font-semibold">R$ {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-gray-500 text-center py-4">Nenhum produto encontrado nesta venda</p>
+              )}
             </div>
           </div>
         </div>

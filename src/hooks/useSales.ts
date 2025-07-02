@@ -95,10 +95,11 @@ export const useSales = () => {
     fetchSales();
   }, []);
 
+  // SEMPRE retornar um objeto válido
   return {
-    sales,
-    loading,
-    error,
+    sales: sales || [],
+    loading: loading,
+    error: error,
     fetchSales,
     createSale,
     updateSale,
