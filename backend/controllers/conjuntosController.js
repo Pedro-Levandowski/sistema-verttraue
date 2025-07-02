@@ -4,7 +4,7 @@ const pool = require('../config/database');
 // Listar todos os conjuntos
 const getAllConjuntos = async (req, res) => {
   try {
-    console.log('📦 Buscando todos os conjuntos...');
+    console.log('🎯 Buscando todos os conjuntos...');
     
     const result = await pool.query(`
       SELECT 
@@ -28,7 +28,7 @@ const getAllConjuntos = async (req, res) => {
 const getConjuntoById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('📦 Buscando conjunto:', id);
+    console.log('🎯 Buscando conjunto:', id);
 
     // Buscar dados do conjunto
     const conjuntoResult = await pool.query('SELECT * FROM conjuntos WHERE id = $1', [id]);
@@ -73,7 +73,7 @@ const createConjunto = async (req, res) => {
     
     const { id, nome, descricao, preco, produtos } = req.body;
 
-    console.log('📦 Criando conjunto:', { id, nome, produtos: produtos?.length });
+    console.log('🎯 Criando conjunto:', { id, nome, produtos: produtos?.length });
 
     if (!id || !nome || !produtos || produtos.length === 0) {
       return res.status(400).json({ error: 'ID, nome e produtos são obrigatórios' });
@@ -138,7 +138,7 @@ const updateConjunto = async (req, res) => {
     const { id } = req.params;
     const { nome, descricao, preco, produtos } = req.body;
 
-    console.log('📦 Atualizando conjunto:', id);
+    console.log('🎯 Atualizando conjunto:', id);
 
     if (!nome) {
       return res.status(400).json({ error: 'Nome é obrigatório' });
@@ -208,7 +208,7 @@ const deleteConjunto = async (req, res) => {
     await client.query('BEGIN');
     
     const { id } = req.params;
-    console.log('📦 Deletando conjunto:', id);
+    console.log('🎯 Deletando conjunto:', id);
 
     // Verificar se conjunto está em vendas
     const vendasCheck = await client.query(

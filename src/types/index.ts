@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   nome: string;
@@ -7,26 +8,65 @@ export interface Product {
   preco: number;
   preco_compra: number;
   fornecedor: Supplier;
-  afiliado_id?: string;
-  afiliado_estoque?: { afiliado_id: string; quantidade: number }[];
+  afiliado_estoque?: AfiliadoEstoque[];
   fotos?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Supplier {
   id: string;
   nome: string;
+  contato: string;
+  email: string;
+  telefone: string;
+  endereco: string;
   cidade: string;
-  contato?: string;
-  total_produtos?: number;
+  uf: string;
+  cep: string;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Conjunto {
+export interface Affiliate {
   id: string;
-  nome: string;
-  descricao: string;
-  preco: number;
-  produtos: ConjuntoProduct[];
-  estoque_disponivel: number;
+  nome_completo: string;
+  email: string;
+  telefone: string;
+  endereco: string;
+  cidade: string;
+  uf: string;
+  cep: string;
+  comissao: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Sale {
+  id: string;
+  data_venda: string;
+  total: number;
+  status: string;
+  afiliado_id?: string;
+  afiliado_nome?: string;
+  observacoes?: string;
+  produtos?: SaleProduct[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SaleProduct {
+  id?: string;
+  venda_id: string;
+  produto_id?: string;
+  kit_id?: string;
+  conjunto_id?: string;
+  quantidade: number;
+  preco_unitario: number;
+  item_nome?: string;
+  item_tipo?: 'produto' | 'kit' | 'conjunto';
 }
 
 export interface Kit {
@@ -35,51 +75,59 @@ export interface Kit {
   descricao: string;
   preco: number;
   produtos: KitProduct[];
-  estoque_disponivel: number;
-}
-
-export interface ConjuntoProduct {
-  produto_id: string;
-  quantidade: number;
+  total_produtos?: number;
+  estoque_disponivel?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface KitProduct {
+  id?: string;
+  kit_id: string;
   produto_id: string;
   quantidade: number;
+  produto_nome?: string;
+  produto_preco?: number;
+  produto_estoque?: number;
 }
 
-export interface Affiliate {
+export interface Conjunto {
   id: string;
-  nome_completo: string;
-  email: string;
-  telefone: string;
-  comissao: number;
-  chave_pix: string;
-  tipo_chave_pix: 'aleatoria' | 'cpf' | 'telefone';
-  ativo: boolean;
+  nome: string;
+  descricao: string;
+  preco: number;
+  produtos: ConjuntoProduct[];
+  total_produtos?: number;
+  estoque_disponivel?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Sale {
-  id: string;
-  data: Date;
-  produtos: SaleProduct[];
-  afiliado?: Affiliate;
-  total: number;
-  tipo: 'online' | 'fisica';
-}
-
-export interface SaleProduct {
-  produto_id?: string;
-  conjunto_id?: string;
-  kit_id?: string;
+export interface ConjuntoProduct {
+  id?: string;
+  conjunto_id: string;
+  produto_id: string;
   quantidade: number;
-  preco_unitario: number;
+  produto_nome?: string;
+  produto_preco?: number;
+  produto_estoque?: number;
 }
 
-export interface DashboardStats {
-  vendas_mensais: number;
-  dias_mais_vendem: { dia: number; vendas: number }[];
-  produtos_mais_vendidos: { produto_id: string; quantidade: number }[];
-  meio_mais_vende: { online: number; fisica: number };
-  afiliados_stats: { afiliado_id: string; vendas: number; comissao_total: number }[];
+export interface AfiliadoEstoque {
+  afiliado_id: string;
+  afiliado_nome?: string;
+  quantidade: number;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  nome: string;
+}
+
+export interface AuthContextType {
+  isAuthenticated: boolean;
+  userName: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
