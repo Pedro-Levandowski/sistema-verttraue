@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -14,7 +13,7 @@ const initDatabase = async (req, res) => {
     
     await client.query('BEGIN');
     
-    // Criar tabelas se não existirem
+    // Criar tabelas se não existirem - CORRIGIDO: usar 'password' ao invés de 'password_hash'
     const createTables = [
       `CREATE TABLE IF NOT EXISTS usuarios (
         id SERIAL PRIMARY KEY,
@@ -129,23 +128,34 @@ const initDatabase = async (req, res) => {
     ];
     
     for (const query of createTables) {
-      await client.query(query);
+      try {
+        await client.query(query);
+        console.log('✅ Tabela criada/verificada');
+      } catch (tableError) {
+        console.error('❌ Erro ao criar tabela:', tableError.message);
+        throw tableError;
+      }
     }
     
-    console.log('✅ Tabelas criadas/verificadas');
+    console.log('✅ Todas as tabelas criadas/verificadas');
     
     // Verificar se usuário admin existe
-    const adminCheck = await client.query('SELECT id FROM usuarios WHERE username = $1', ['admin@vertttraue.com']);
-    
-    if (adminCheck.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('123456', 10);
-      await client.query(
-        'INSERT INTO usuarios (username, password, nome) VALUES ($1, $2, $3)',
-        ['admin@vertttraue.com', hashedPassword, 'Administrador']
-      );
-      console.log('✅ Usuário admin criado');
-    } else {
-      console.log('ℹ️ Usuário admin já existe');
+    try {
+      const adminCheck = await client.query('SELECT id FROM usuarios WHERE username = $1', ['admin@vertttraue.com']);
+      
+      if (adminCheck.rows.length === 0) {
+        const hashedPassword = await bcrypt.hash('123456', 10);
+        await client.query(
+          'INSERT INTO usuarios (username, password, nome) VALUES ($1, $2, $3)',
+          ['admin@vertttraue.com', hashedPassword, 'Administrador']
+        );
+        console.log('✅ Usuário admin criado');
+      } else {
+        console.log('ℹ️ Usuário admin já existe');
+      }
+    } catch (adminError) {
+      console.error('❌ Erro ao verificar/criar admin:', adminError.message);
+      throw adminError;
     }
     
     await client.query('COMMIT');
@@ -165,46 +175,66 @@ const initDatabase = async (req, res) => {
     
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Erro ao inicializar banco:', error);
+    console.error('❌ === ERRO CRÍTICO NA INICIALIZAÇÃO ===');
+    console.error('Erro completo:', error);
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({ 
       success: false,
       error: 'Erro ao inicializar banco de dados',
-      details: error.message
+      details: error.message,
+      code: error.code
     });
   } finally {
     client.release();
   }
 };
 
-// Login
+// Login - SIMPLIFICADO E ROBUSTO
 const login = async (req, res) => {
   try {
+    console.log('🔐 === INICIANDO LOGIN ===');
+    console.log('📨 Request body:', req.body);
+    
     const { username, password } = req.body;
-    console.log('🔐 === TENTATIVA DE LOGIN ===');
-    console.log('📧 Username:', username);
 
+    // Validação básica
     if (!username || !password) {
       console.log('❌ Dados incompletos');
-      return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Username e senha são obrigatórios' 
+      });
     }
 
+    console.log('🔍 Buscando usuário:', username);
     const result = await pool.query('SELECT * FROM usuarios WHERE username = $1', [username]);
     
     if (result.rows.length === 0) {
       console.log('❌ Usuário não encontrado:', username);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ 
+        success: false,
+        error: 'Credenciais inválidas' 
+      });
     }
 
     const user = result.rows[0];
     console.log('✅ Usuário encontrado:', user.username);
     
+    console.log('🔐 Verificando senha...');
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       console.log('❌ Senha inválida para:', username);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ 
+        success: false,
+        error: 'Credenciais inválidas' 
+      });
     }
 
+    console.log('🎫 Gerando token JWT...');
     const token = jwt.sign(
       { userId: user.id, username: user.username }, 
       JWT_SECRET, 
@@ -213,6 +243,7 @@ const login = async (req, res) => {
     
     console.log('✅ Login bem-sucedido para:', username);
     res.json({ 
+      success: true,
       token, 
       user: { 
         id: user.id, 
@@ -221,10 +252,17 @@ const login = async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('❌ Erro no login:', error);
+    console.error('❌ === ERRO CRÍTICO NO LOGIN ===');
+    console.error('Erro completo:', error);
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({ 
-      error: 'Erro interno do servidor',
-      details: error.message
+      success: false,
+      error: 'Erro interno do servidor no login',
+      details: error.message,
+      code: error.code
     });
   }
 };
@@ -317,12 +355,10 @@ const testDatabase = async (req, res) => {
   }
 };
 
-// Resetar usuário admin
+// Resetar usuário admin - SIMPLIFICADO
 const resetAdmin = async (req, res) => {
   try {
     console.log('🔄 === RESETANDO USUÁRIO ADMIN ===');
-    console.log('📨 Request body:', req.body);
-    console.log('🔑 JWT_SECRET definido:', JWT_SECRET ? 'SIM' : 'NÃO');
     
     const hashedPassword = await bcrypt.hash('123456', 10);
     console.log('🔐 Senha hasheada gerada');
@@ -352,9 +388,6 @@ const resetAdmin = async (req, res) => {
   } catch (error) {
     console.error('❌ === ERRO AO RESETAR ADMIN ===');
     console.error('Erro completo:', error);
-    console.error('Message:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack:', error.stack);
     
     res.status(500).json({ 
       success: false,
@@ -365,7 +398,7 @@ const resetAdmin = async (req, res) => {
   }
 };
 
-// Criar usuário
+// Criar usuário - SIMPLIFICADO
 const createUser = async (req, res) => {
   try {
     console.log('👤 === CRIANDO USUÁRIO ===');
@@ -373,7 +406,7 @@ const createUser = async (req, res) => {
     
     const { username, password, nome } = req.body;
 
-    // Validação interna robusta
+    // Validação robusta
     if (!username || typeof username !== 'string' || username.trim() === '') {
       console.log('❌ Username inválido:', username);
       return res.status(400).json({ 
@@ -422,9 +455,6 @@ const createUser = async (req, res) => {
   } catch (error) {
     console.error('❌ === ERRO AO CRIAR USUÁRIO ===');
     console.error('Erro completo:', error);
-    console.error('Message:', error.message);
-    console.error('Code:', error.code);
-    console.error('Stack:', error.stack);
     
     res.status(500).json({ 
       success: false,
