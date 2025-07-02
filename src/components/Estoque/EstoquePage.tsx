@@ -28,35 +28,39 @@ interface EstoquePageProps {
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   console.log('🚀 [EstoquePage] Inicializando componente...');
 
-  // Hooks com valores padrão seguros
-  const productsHook = useProducts();
-  const suppliersHook = useSuppliers();
-  const affiliatesHook = useAffiliates();
-  const kitsHook = useKits();
-  const conjuntosHook = useConjuntos();
+  // Hooks com proteção contra undefined
+  const {
+    products = [],
+    loading: productsLoading = false,
+    error: productsError = null,
+    createProduct,
+    updateProduct,
+    deleteProduct
+  } = useProducts() || {};
 
-  // Extrair valores com fallbacks seguros
-  const products = productsHook?.products || [];
-  const productsLoading = productsHook?.loading || false;
-  const productsError = productsHook?.error || null;
-  const createProduct = productsHook?.createProduct;
-  const updateProduct = productsHook?.updateProduct;
-  const deleteProduct = productsHook?.deleteProduct;
+  const {
+    suppliers = []
+  } = useSuppliers() || {};
 
-  const suppliers = suppliersHook?.suppliers || [];
-  const affiliates = affiliatesHook?.affiliates || [];
+  const {
+    affiliates = []
+  } = useAffiliates() || {};
 
-  const kits = kitsHook?.kits || [];
-  const kitsLoading = kitsHook?.loading || false;
-  const createKit = kitsHook?.createKit;
-  const updateKit = kitsHook?.updateKit;
-  const deleteKit = kitsHook?.deleteKit;
+  const {
+    kits = [],
+    loading: kitsLoading = false,
+    createKit,
+    updateKit,
+    deleteKit
+  } = useKits() || {};
 
-  const conjuntos = conjuntosHook?.conjuntos || [];
-  const conjuntosLoading = conjuntosHook?.loading || false;
-  const createConjunto = conjuntosHook?.createConjunto;
-  const updateConjunto = conjuntosHook?.updateConjunto;
-  const deleteConjunto = conjuntosHook?.deleteConjunto;
+  const {
+    conjuntos = [],
+    loading: conjuntosLoading = false,
+    createConjunto,
+    updateConjunto,
+    deleteConjunto
+  } = useConjuntos() || {};
 
   // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
@@ -236,8 +240,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       </div>
     );
   }
-
-  console.log('🎨 [EstoquePage] Renderizando interface...');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">

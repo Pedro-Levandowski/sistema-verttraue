@@ -99,7 +99,7 @@ const AfiliadoEstoqueModal: React.FC<AfiliadoEstoqueModalProps> = ({
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
-              <Button type="submit" className="flex-1 bg-vertttraue-primary">
+              <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
                 Atribuir
               </Button>
             </div>

@@ -176,7 +176,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-vertttraue-primary hover:bg-vertttraue-primary/80">
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
               {product ? 'Atualizar' : 'Criar'}
             </Button>
           </DialogFooter>

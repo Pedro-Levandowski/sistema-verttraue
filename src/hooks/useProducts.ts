@@ -95,11 +95,11 @@ export const useProducts = () => {
     fetchProducts();
   }, []);
 
-  // SEMPRE retornar um objeto válido, nunca undefined
+  // SEMPRE retornar um objeto válido
   return {
     products: products || [],
-    loading: loading || false,
-    error: error || null,
+    loading: loading,
+    error: error,
     fetchProducts,
     createProduct,
     updateProduct,
