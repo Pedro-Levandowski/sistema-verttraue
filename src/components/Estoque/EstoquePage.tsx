@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,34 +28,35 @@ interface EstoquePageProps {
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   console.log('🚀 [EstoquePage] Inicializando componente...');
 
-  // Hooks
-  const {
-    products = [],
-    loading: productsLoading = false,
-    error: productsError = null,
-    createProduct,
-    updateProduct,
-    deleteProduct,
-  } = useProducts() || {};
+  // Hooks com valores padrão seguros
+  const productsHook = useProducts();
+  const suppliersHook = useSuppliers();
+  const affiliatesHook = useAffiliates();
+  const kitsHook = useKits();
+  const conjuntosHook = useConjuntos();
 
-  const { suppliers = [] } = useSuppliers() || {};
-  const { affiliates = [] } = useAffiliates() || {};
-  
-  const {
-    kits = [],
-    loading: kitsLoading = false,
-    createKit,
-    updateKit,
-    deleteKit,
-  } = useKits() || {};
+  // Extrair valores com fallbacks seguros
+  const products = productsHook?.products || [];
+  const productsLoading = productsHook?.loading || false;
+  const productsError = productsHook?.error || null;
+  const createProduct = productsHook?.createProduct;
+  const updateProduct = productsHook?.updateProduct;
+  const deleteProduct = productsHook?.deleteProduct;
 
-  const {
-    conjuntos = [],
-    loading: conjuntosLoading = false,
-    createConjunto,
-    updateConjunto,
-    deleteConjunto,
-  } = useConjuntos() || {};
+  const suppliers = suppliersHook?.suppliers || [];
+  const affiliates = affiliatesHook?.affiliates || [];
+
+  const kits = kitsHook?.kits || [];
+  const kitsLoading = kitsHook?.loading || false;
+  const createKit = kitsHook?.createKit;
+  const updateKit = kitsHook?.updateKit;
+  const deleteKit = kitsHook?.deleteKit;
+
+  const conjuntos = conjuntosHook?.conjuntos || [];
+  const conjuntosLoading = conjuntosHook?.loading || false;
+  const createConjunto = conjuntosHook?.createConjunto;
+  const updateConjunto = conjuntosHook?.updateConjunto;
+  const deleteConjunto = conjuntosHook?.deleteConjunto;
 
   // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
@@ -381,10 +383,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
           <TabsContent value="kits">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
-                Kits Disponíveis ({filteredKits.length})
-              </h2>
-
+              <h2 className="text-xl font-bold mb-4 text-blue-600">Kits Disponíveis ({filteredKits.length})</h2>
               {filteredKits.length === 0 && !kitsLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum kit encontrado no banco de dados.</p>
@@ -407,7 +406,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                         <tr key={kit.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 font-mono text-xs">{kit.id}</td>
                           <td className="p-3 font-semibold">{kit.nome}</td>
-                          <td className="p-3 font-bold text-vertttraue-primary">
+                          <td className="p-3 font-bold text-blue-600">
                             R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="p-3">{kit.estoque_disponivel}</td>
@@ -420,7 +419,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                   setEditingKit(kit);
                                   setShowKitModal(true);
                                 }}
-                                className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                                className="hover:bg-blue-600 hover:text-white text-xs"
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -433,11 +432,12 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                     message: `Tem certeza que deseja excluir o kit "${kit.nome}"? Esta ação não pode ser desfeita.`,
                                     onConfirm: async () => {
                                       try {
-                                        await deleteKit(kit.id);
-                                        console.log('✅ Kit excluído com sucesso');
+                                        if (deleteKit) {
+                                          await deleteKit(kit.id);
+                                          console.log('✅ Kit excluído com sucesso');
+                                        }
                                       } catch (error) {
                                         console.error('❌ Erro ao excluir kit:', error);
-                                        alert('Erro ao excluir kit. Verifique o console para mais detalhes.');
                                       }
                                     }
                                   });
@@ -460,10 +460,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
           <TabsContent value="conjuntos">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-vertttraue-primary">
-                Conjuntos Disponíveis ({filteredConjuntos.length})
-              </h2>
-
+              <h2 className="text-xl font-bold mb-4 text-blue-600">Conjuntos Disponíveis ({filteredConjuntos.length})</h2>
               {filteredConjuntos.length === 0 && !conjuntosLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>Nenhum conjunto encontrado no banco de dados.</p>
@@ -486,7 +483,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                         <tr key={conjunto.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 font-mono text-xs">{conjunto.id}</td>
                           <td className="p-3 font-semibold">{conjunto.nome}</td>
-                          <td className="p-3 font-bold text-vertttraue-primary">
+                          <td className="p-3 font-bold text-blue-600">
                             R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="p-3">{conjunto.estoque_disponivel}</td>
@@ -499,7 +496,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                   setEditingConjunto(conjunto);
                                   setShowConjuntoModal(true);
                                 }}
-                                className="hover:bg-vertttraue-primary hover:text-white text-xs"
+                                className="hover:bg-blue-600 hover:text-white text-xs"
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -512,11 +509,12 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                                     message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"? Esta ação não pode ser desfeita.`,
                                     onConfirm: async () => {
                                       try {
-                                        await deleteConjunto(conjunto.id);
-                                        console.log('✅ Conjunto excluído com sucesso');
+                                        if (deleteConjunto) {
+                                          await deleteConjunto(conjunto.id);
+                                          console.log('✅ Conjunto excluído com sucesso');
+                                        }
                                       } catch (error) {
                                         console.error('❌ Erro ao excluir conjunto:', error);
-                                        alert('Erro ao excluir conjunto. Verifique o console para mais detalhes.');
                                       }
                                     }
                                   });
