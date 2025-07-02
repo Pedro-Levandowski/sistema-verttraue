@@ -27,9 +27,14 @@ const initDatabase = async (req, res) => {
       `CREATE TABLE IF NOT EXISTS fornecedores (
         id SERIAL PRIMARY KEY,
         nome VARCHAR(255) NOT NULL,
+        contato VARCHAR(255),
         email VARCHAR(255),
         telefone VARCHAR(255),
         endereco TEXT,
+        cidade VARCHAR(255),
+        uf VARCHAR(2),
+        cep VARCHAR(10),
+        ativo BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       
@@ -38,17 +43,27 @@ const initDatabase = async (req, res) => {
         nome VARCHAR(255) NOT NULL,
         codigo VARCHAR(100) UNIQUE,
         descricao TEXT,
+        estoque_fisico INTEGER DEFAULT 0,
+        estoque_site INTEGER DEFAULT 0,
         preco DECIMAL(10,2),
+        preco_compra DECIMAL(10,2),
         fornecedor_id INTEGER REFERENCES fornecedores(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       
       `CREATE TABLE IF NOT EXISTS afiliados (
         id SERIAL PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
+        nome_completo VARCHAR(255) NOT NULL,
         email VARCHAR(255),
         telefone VARCHAR(255),
         endereco TEXT,
+        cidade VARCHAR(255),
+        uf VARCHAR(2),
+        cep VARCHAR(10),
+        comissao DECIMAL(5,2) DEFAULT 0,
+        chave_pix VARCHAR(255),
+        tipo_chave_pix VARCHAR(20),
+        ativo BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       
@@ -65,9 +80,12 @@ const initDatabase = async (req, res) => {
         id SERIAL PRIMARY KEY,
         venda_id INTEGER REFERENCES vendas(id) ON DELETE CASCADE,
         produto_id INTEGER REFERENCES produtos(id),
+        kit_id INTEGER,
+        conjunto_id INTEGER,
         quantidade INTEGER NOT NULL,
         preco_unitario DECIMAL(10,2) NOT NULL,
-        subtotal DECIMAL(10,2) NOT NULL
+        item_nome VARCHAR(255),
+        item_tipo VARCHAR(20)
       )`,
       
       `CREATE TABLE IF NOT EXISTS conjuntos (
@@ -78,12 +96,26 @@ const initDatabase = async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       
+      `CREATE TABLE IF NOT EXISTS conjunto_produtos (
+        id SERIAL PRIMARY KEY,
+        conjunto_id INTEGER REFERENCES conjuntos(id) ON DELETE CASCADE,
+        produto_id INTEGER REFERENCES produtos(id),
+        quantidade INTEGER NOT NULL
+      )`,
+      
       `CREATE TABLE IF NOT EXISTS kits (
         id SERIAL PRIMARY KEY,
         nome VARCHAR(255) NOT NULL,
         descricao TEXT,
         preco DECIMAL(10,2),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS kit_produtos (
+        id SERIAL PRIMARY KEY,
+        kit_id INTEGER REFERENCES kits(id) ON DELETE CASCADE,
+        produto_id INTEGER REFERENCES produtos(id),
+        quantidade INTEGER NOT NULL
       )`,
       
       `CREATE TABLE IF NOT EXISTS estoque_afiliados (
