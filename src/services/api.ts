@@ -218,7 +218,7 @@ export const estoqueAPI = {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
       },
       body: JSON.stringify(data)
     });
@@ -235,7 +235,7 @@ export const estoqueAPI = {
     console.log('📡 [estoqueAPI] Buscando estoque do afiliado:', afiliadoId);
     const response = await fetch(`${API_BASE_URL}/estoque/afiliado/${afiliadoId}`, {
       headers: {
-        'Authorization': `Bearer ${getToken()}`
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
       }
     });
 
