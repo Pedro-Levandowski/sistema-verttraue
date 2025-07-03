@@ -223,7 +223,7 @@ const VendasPage: React.FC<VendasPageProps> = ({ onBack }) => {
         conjuntos={conjuntos}
         kits={kits}
         affiliates={affiliates}
-        sale={editMode ? selectedSale : null}
+        initialSale={editMode ? selectedSale : null}
       />
 
       <VendaDetalhesModal

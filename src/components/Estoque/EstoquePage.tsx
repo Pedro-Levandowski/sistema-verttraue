@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,6 +139,60 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         console.error(`❌ Erro ao excluir ${itemToDelete.type}:`, error);
       }
     }
+  };
+
+  // Handler para salvar produto
+  const handleSaveProduct = async (productData: any) => {
+    try {
+      if (selectedProduct) {
+        await updateProduct(selectedProduct.id, productData);
+      } else {
+        await createProduct(productData);
+      }
+      setShowProdutoModal(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error('❌ Erro ao salvar produto:', error);
+      throw error;
+    }
+  };
+
+  // Handler para salvar kit
+  const handleSaveKit = async (kitData: any) => {
+    try {
+      if (selectedKit) {
+        await updateKit(selectedKit.id, kitData);
+      } else {
+        await createKit(kitData);
+      }
+      setShowKitModal(false);
+      setSelectedKit(null);
+    } catch (error) {
+      console.error('❌ Erro ao salvar kit:', error);
+      throw error;
+    }
+  };
+
+  // Handler para salvar conjunto
+  const handleSaveConjunto = async (conjuntoData: any) => {
+    try {
+      if (selectedConjunto) {
+        await updateConjunto(selectedConjunto.id, conjuntoData);
+      } else {
+        await createConjunto(conjuntoData);
+      }
+      setShowConjuntoModal(false);
+      setSelectedConjunto(null);
+    } catch (error) {
+      console.error('❌ Erro ao salvar conjunto:', error);
+      throw error;
+    }
+  };
+
+  // Handler para estoque de afiliado
+  const handleUpdateAffiliateStock = async (affiliateId: string, quantity: number) => {
+    // Implementar lógica para atualizar estoque do afiliado
+    console.log('Atualizando estoque do afiliado:', affiliateId, quantity);
   };
 
   return (
@@ -384,8 +437,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <ProductModal
         isOpen={showProductModal}
         onClose={() => setShowProductModal(false)}
-        products={products}
+        onSave={handleSaveProduct}
+        product={selectedProduct}
         suppliers={suppliers}
+        affiliates={affiliates}
       />
 
       <ProdutoModal
@@ -394,7 +449,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           setShowProdutoModal(false);
           setSelectedProduct(null);
         }}
-        onSave={selectedProduct ? updateProduct : createProduct}
+        onSave={handleSaveProduct}
         suppliers={suppliers}
         product={selectedProduct}
       />
@@ -412,7 +467,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           setShowKitModal(false);
           setSelectedKit(null);
         }}
-        onSave={selectedKit ? updateKit : createKit}
+        onSave={handleSaveKit}
         products={products}
         kit={selectedKit}
       />
@@ -430,7 +485,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
           setShowConjuntoModal(false);
           setSelectedConjunto(null);
         }}
-        onSave={selectedConjunto ? updateConjunto : createConjunto}
+        onSave={handleSaveConjunto}
         products={products}
         conjunto={selectedConjunto}
       />
@@ -445,9 +500,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <AfiliadoEstoqueModal
         isOpen={showAfiliadoEstoqueModal}
         onClose={() => setShowAfiliadoEstoqueModal(false)}
-        products={products}
-        kits={kits}
-        conjuntos={conjuntos}
+        onUpdateStock={handleUpdateAffiliateStock}
+        product={selectedProduct}
         affiliates={affiliates}
       />
 
