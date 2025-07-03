@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Verificar se tabela existe
@@ -68,6 +67,8 @@ const getAllVendas = async (req, res) => {
         data_venda: row.data_venda,
         valor_total: parseFloat(row.valor_total) || 0,
         status: row.status || 'pendente',
+        afiliado_id: row.afiliado_id,
+        afiliado_nome: row.afiliado_nome || null,
         afiliado: row.afiliado_id ? {
           id: row.afiliado_id,
           nome: row.afiliado_nome || '',
@@ -160,6 +161,8 @@ const getVendasPorPeriodo = async (req, res) => {
         data_venda: row.data_venda,
         valor_total: parseFloat(row.valor_total) || 0,
         status: row.status || 'pendente',
+        afiliado_id: row.afiliado_id,
+        afiliado_nome: row.afiliado_nome || null,
         afiliado: row.afiliado_id ? {
           id: row.afiliado_id,
           nome: row.afiliado_nome || '',
@@ -237,6 +240,8 @@ const getVendaById = async (req, res) => {
       data_venda: venda.data_venda,
       valor_total: parseFloat(venda.valor_total) || 0,
       status: venda.status || 'pendente',
+      afiliado_id: venda.afiliado_id,
+      afiliado_nome: venda.afiliado_nome || null,
       afiliado: venda.afiliado_id ? {
         id: venda.afiliado_id,
         nome: venda.afiliado_nome || '',
@@ -264,8 +269,8 @@ const getVendaById = async (req, res) => {
 // Criar nova venda
 const createVenda = async (req, res) => {
   try {
-    const { data_venda, valor_total, status, afiliado_id, produtos } = req.body;
-    console.log('🛒 Criando venda:', { data_venda, valor_total, afiliado_id });
+    const { id, data_venda, valor_total, status, afiliado_id, produtos, observacoes, tipo_venda } = req.body;
+    console.log('🛒 Criando venda:', { id, data_venda, valor_total, afiliado_id, tipo_venda });
 
     const vendasExists = await checkTableExists('vendas');
     if (!vendasExists) {
@@ -277,11 +282,14 @@ const createVenda = async (req, res) => {
       return res.status(400).json({ error: 'Data da venda e valor total são obrigatórios' });
     }
 
+    // Usar o ID fornecido ou gerar um novo
+    const vendaId = id || `VENDA-${Date.now()}`;
+
     const result = await pool.query(`
-      INSERT INTO vendas (data_venda, valor_total, status, afiliado_id)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO vendas (id, data_venda, valor_total, status, afiliado_id, observacoes, tipo_venda)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [data_venda, valor_total, status || 'pendente', afiliado_id]);
+    `, [vendaId, data_venda, valor_total, status || 'concluida', afiliado_id, observacoes || '', tipo_venda || 'fisica']);
 
     const venda = result.rows[0];
 
@@ -293,7 +301,13 @@ const createVenda = async (req, res) => {
           await pool.query(`
             INSERT INTO venda_produtos (venda_id, produto_id, quantidade, preco_unitario, subtotal)
             VALUES ($1, $2, $3, $4, $5)
-          `, [venda.id, produto.produto_id, produto.quantidade, produto.preco_unitario, produto.subtotal]);
+          `, [
+            venda.id, 
+            produto.produto_id, 
+            produto.quantidade || 1, 
+            produto.preco_unitario || 0, 
+            produto.subtotal || (produto.preco_unitario * produto.quantidade) || 0
+          ]);
         } catch (error) {
           console.error('❌ Erro ao adicionar produto à venda:', error);
         }
@@ -304,7 +318,7 @@ const createVenda = async (req, res) => {
     res.status(201).json(venda);
   } catch (error) {
     console.error('❌ Erro ao criar venda:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: 'Erro interno do servidor ao criar venda' });
   }
 };
 

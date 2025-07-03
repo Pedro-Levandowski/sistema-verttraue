@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Product, Conjunto, Kit, Affiliate } from '../../types';
 
 interface VendaModalProps {
@@ -28,7 +29,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     tipo_venda: 'online' as 'online' | 'fisica',
-    afiliado_id: '',
+    afiliado_id: 'none',
     data_venda: new Date().toISOString().split('T')[0],
     observacoes: '',
     produtos: [] as { type: 'produto' | 'conjunto' | 'kit'; id: string; quantidade: number; preco: number }[]
@@ -36,7 +37,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   const [selectedType, setSelectedType] = useState<'produto' | 'conjunto' | 'kit'>('produto');
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState('none');
   const [quantidade, setQuantidade] = useState('');
 
   const getNextSaleId = () => {
@@ -45,7 +46,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
   };
 
   const addItem = () => {
-    if (!selectedId || !quantidade) return;
+    if (!selectedId || selectedId === 'none' || !quantidade) return;
 
     let preco = 0;
     if (selectedType === 'produto') {
@@ -79,7 +80,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
       });
     }
 
-    setSelectedId('');
+    setSelectedId('none');
     setQuantidade('');
   };
 
@@ -103,7 +104,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
     try {
       const saleData = {
         id: getNextSaleId(),
-        afiliado_id: formData.afiliado_id || null,
+        afiliado_id: formData.afiliado_id === 'none' ? null : formData.afiliado_id,
         tipo_venda: formData.tipo_venda,
         valor_total: calculateTotal(),
         observacoes: formData.observacoes,
@@ -113,7 +114,8 @@ const VendaModal: React.FC<VendaModalProps> = ({
           conjunto_id: item.type === 'conjunto' ? item.id : null,
           kit_id: item.type === 'kit' ? item.id : null,
           quantidade: item.quantidade,
-          preco_unitario: item.preco
+          preco_unitario: item.preco,
+          subtotal: item.preco * item.quantidade
         }))
       };
 
@@ -121,7 +123,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
       onClose();
       setFormData({ 
         tipo_venda: 'online', 
-        afiliado_id: '', 
+        afiliado_id: 'none', 
         data_venda: new Date().toISOString().split('T')[0],
         observacoes: '',
         produtos: [] 
@@ -150,21 +152,21 @@ const VendaModal: React.FC<VendaModalProps> = ({
   const renderOptions = () => {
     if (selectedType === 'produto') {
       return products.map(product => (
-        <option key={product.id} value={product.id}>
+        <SelectItem key={product.id} value={product.id}>
           {product.nome} - R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-        </option>
+        </SelectItem>
       ));
     } else if (selectedType === 'conjunto') {
       return conjuntos.map(conjunto => (
-        <option key={conjunto.id} value={conjunto.id}>
+        <SelectItem key={conjunto.id} value={conjunto.id}>
           {conjunto.nome} - R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-        </option>
+        </SelectItem>
       ));
     } else {
       return kits.map(kit => (
-        <option key={kit.id} value={kit.id}>
+        <SelectItem key={kit.id} value={kit.id}>
           {kit.nome} - R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-        </option>
+        </SelectItem>
       ));
     }
   };
@@ -183,14 +185,18 @@ const VendaModal: React.FC<VendaModalProps> = ({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Tipo de Venda</Label>
-              <select
-                value={formData.tipo_venda}
-                onChange={(e) => setFormData({ ...formData, tipo_venda: e.target.value as 'online' | 'fisica' })}
-                className="w-full rounded border p-2"
+              <Select 
+                value={formData.tipo_venda} 
+                onValueChange={(value) => setFormData({ ...formData, tipo_venda: value as 'online' | 'fisica' })}
               >
-                <option value="online">Online</option>
-                <option value="fisica">Física</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="fisica">Física</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -205,18 +211,22 @@ const VendaModal: React.FC<VendaModalProps> = ({
 
             <div>
               <Label>Afiliado (opcional)</Label>
-              <select
+              <Select
                 value={formData.afiliado_id}
-                onChange={(e) => setFormData({ ...formData, afiliado_id: e.target.value })}
-                className="w-full rounded border p-2"
+                onValueChange={(value) => setFormData({ ...formData, afiliado_id: value })}
               >
-                <option value="">Nenhum afiliado</option>
-                {activeAffiliates.map(affiliate => (
-                  <option key={affiliate.id} value={affiliate.id}>
-                    {affiliate.nome_completo} ({affiliate.id})
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um afiliado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum afiliado</SelectItem>
+                  {activeAffiliates.map(affiliate => (
+                    <SelectItem key={affiliate.id} value={affiliate.id}>
+                      {affiliate.nome_completo} ({affiliate.id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -233,27 +243,35 @@ const VendaModal: React.FC<VendaModalProps> = ({
             <h3 className="font-semibold mb-3">Itens da Venda</h3>
             
             <div className="grid grid-cols-4 gap-2 mb-4">
-              <select
+              <Select
                 value={selectedType}
-                onChange={(e) => {
-                  setSelectedType(e.target.value as 'produto' | 'conjunto' | 'kit');
-                  setSelectedId('');
+                onValueChange={(value) => {
+                  setSelectedType(value as 'produto' | 'conjunto' | 'kit');
+                  setSelectedId('none');
                 }}
-                className="rounded border p-2"
               >
-                <option value="produto">Produto</option>
-                <option value="conjunto">Conjunto</option>
-                <option value="kit">Kit</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="produto">Produto</SelectItem>
+                  <SelectItem value="conjunto">Conjunto</SelectItem>
+                  <SelectItem value="kit">Kit</SelectItem>
+                </SelectContent>
+              </Select>
               
-              <select
+              <Select
                 value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="flex-1 rounded border p-2"
+                onValueChange={(value) => setSelectedId(value)}
               >
-                <option value="">Selecione...</option>
-                {renderOptions()}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  {renderOptions()}
+                </SelectContent>
+              </Select>
               
               <Input
                 type="number"

@@ -39,7 +39,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         estoque_site: product.estoque_site || 0,
         preco: product.preco || 0,
         preco_compra: product.preco_compra || 0,
-        fornecedor_id: product.fornecedor?.id || ''
+        fornecedor_id: product.fornecedor?.id || 'none'
       });
     } else if (!product && isOpen) {
       setFormData({
@@ -50,7 +50,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         estoque_site: 0,
         preco: 0,
         preco_compra: 0,
-        fornecedor_id: ''
+        fornecedor_id: 'none'
       });
     }
   }, [product, isOpen]);
@@ -76,7 +76,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
           estoque_site: Number(formData.estoque_site) || 0,
           preco: Number(formData.preco) || 0,
           preco_compra: Number(formData.preco_compra) || 0,
-          fornecedor_id: formData.fornecedor_id || null
+          fornecedor_id: formData.fornecedor_id === 'none' ? null : formData.fornecedor_id
         };
         
         console.log('📤 [ProdutoModal] Enviando dados:', productData);
@@ -148,7 +148,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
                 <SelectValue placeholder="Selecione um fornecedor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum fornecedor</SelectItem>
+                <SelectItem value="none">Nenhum fornecedor</SelectItem>
                 {suppliers.map(supplier => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.nome} - {supplier.cidade}
