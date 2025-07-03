@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -489,9 +488,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
         isOpen={showProductModal}
         onClose={() => setShowProductModal(false)}
         onSave={handleSaveProduct}
-        product={selectedProduct}
+        initialProduct={selectedProduct}
         suppliers={suppliers}
-        affiliates={affiliates}
       />
 
       <ProdutoModal
@@ -508,8 +506,8 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <ProductInfoModal
         isOpen={showProductInfoModal}
         onClose={() => setShowProductInfoModal(false)}
-        product={selectedProduct}
-        affiliates={affiliates}
+        item={selectedProduct}
+        type="produto"
       />
 
       <KitModal

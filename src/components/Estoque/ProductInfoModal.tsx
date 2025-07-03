@@ -288,7 +288,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
             setShowEstoqueModal(false);
             setSelectedAffiliate(null);
           }}
-          affiliate={selectedAffiliate}
+          affiliates={affiliates}
           product={type === 'produto' ? (item as Product) : null}
           onSuccess={refreshStocks}
         />
