@@ -16,8 +16,29 @@ const getAllKits = async (req, res) => {
       ORDER BY k.created_at DESC
     `);
 
-    console.log(`✅ ${result.rows.length} kits encontrados`);
-    res.json(result.rows);
+    // Buscar produtos de cada kit
+    const kits = [];
+    for (const kit of result.rows) {
+      const produtosResult = await pool.query(`
+        SELECT 
+          kp.*,
+          p.nome as produto_nome,
+          p.preco as produto_preco,
+          p.estoque_site as produto_estoque
+        FROM kit_produtos kp
+        JOIN produtos p ON kp.produto_id = p.id
+        WHERE kp.kit_id = $1
+        ORDER BY kp.id
+      `, [kit.id]);
+
+      kits.push({
+        ...kit,
+        produtos: produtosResult.rows
+      });
+    }
+
+    console.log(`✅ ${kits.length} kits encontrados`);
+    res.json(kits);
   } catch (error) {
     console.error('❌ Erro ao buscar kits:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -89,10 +110,12 @@ const createKit = async (req, res) => {
 
     // Inserir produtos do kit se fornecidos
     if (produtos && Array.isArray(produtos) && produtos.length > 0) {
+      console.log('🎁 Processando', produtos.length, 'produtos para o kit');
+      
       for (const produto of produtos) {
         const { produto_id, quantidade } = produto;
         
-        console.log('🎁 Adicionando produto ao kit:', { produto_id, quantidade });
+        console.log('🎁 Processando produto:', { produto_id, quantidade });
         
         if (!produto_id || !quantidade || quantidade <= 0) {
           console.warn('⚠️ Produto inválido ignorado:', produto);
@@ -110,11 +133,16 @@ const createKit = async (req, res) => {
           continue;
         }
 
+        // Inserir produto no kit
         await client.query(`
           INSERT INTO kit_produtos (kit_id, produto_id, quantidade)
           VALUES ($1, $2, $3)
         `, [id, produto_id, quantidade]);
+        
+        console.log('✅ Produto adicionado ao kit:', { kit_id: id, produto_id, quantidade });
       }
+    } else {
+      console.log('⚠️ Nenhum produto fornecido para o kit');
     }
 
     await client.query('COMMIT');

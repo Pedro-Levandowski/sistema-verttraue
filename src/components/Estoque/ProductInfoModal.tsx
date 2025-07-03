@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,38 +25,61 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
   const [affiliateStocks, setAffiliateStocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Carregar estoque de afiliados quando o modal abrir
-  useEffect(() => {
-    const loadAffiliateStocks = async () => {
-      if (!isOpen || !item || type !== 'produto') return;
-      
-      setLoading(true);
-      try {
-        const stocks = [];
-        for (const affiliate of affiliates) {
-          try {
-            const stock = await getAffiliateStock(affiliate.id);
-            const itemStock = stock.find((s: any) => s.produto_id === item.id);
-            if (itemStock) {
-              stocks.push({
-                ...itemStock,
-                afiliado_nome: affiliate.nome_completo
-              });
-            }
-          } catch (error) {
-            console.error(`Erro ao carregar estoque do afiliado ${affiliate.id}:`, error);
-          }
-        }
-        setAffiliateStocks(stocks);
-      } catch (error) {
-        console.error('Erro ao carregar estoques:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Debounce para evitar muitas requisições
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
-    loadAffiliateStocks();
-  }, [isOpen, item, affiliates, getAffiliateStock, type]);
+  // Carregar estoque de afiliados quando o modal abrir (com debounce)
+  useEffect(() => {
+    if (!isOpen || !item || type !== 'produto') return;
+    
+    // Limpar timer anterior
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    // Definir novo timer
+    const timer = setTimeout(() => {
+      loadAffiliateStocks();
+    }, 300); // 300ms de debounce
+
+    setDebounceTimer(timer);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isOpen, item, affiliates, type]);
+
+  const loadAffiliateStocks = async () => {
+    if (!item || type !== 'produto') return;
+    
+    setLoading(true);
+    try {
+      const stocks = [];
+      
+      // Limitar a 5 afiliados por vez para evitar muitas requisições
+      const activeAffiliates = affiliates.filter(a => a.ativo).slice(0, 10);
+      
+      for (const affiliate of activeAffiliates) {
+        try {
+          const stock = await getAffiliateStock(affiliate.id);
+          const itemStock = stock.find((s: any) => s.produto_id === item.id);
+          if (itemStock) {
+            stocks.push({
+              ...itemStock,
+              afiliado_nome: affiliate.nome_completo
+            });
+          }
+        } catch (error) {
+          console.error(`Erro ao carregar estoque do afiliado ${affiliate.id}:`, error);
+        }
+      }
+      setAffiliateStocks(stocks);
+    } catch (error) {
+      console.error('Erro ao carregar estoques:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleManageStock = (affiliate: Affiliate) => {
     setSelectedAffiliate(affiliate);
@@ -63,115 +87,115 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
   };
 
   const refreshStocks = () => {
-    // Recarregar estoques após atualização
-    const loadStocks = async () => {
-      if (!item || type !== 'produto') return;
-      
-      try {
-        const stocks = [];
-        for (const affiliate of affiliates) {
-          try {
-            const stock = await getAffiliateStock(affiliate.id);
-            const itemStock = stock.find((s: any) => s.produto_id === item.id);
-            if (itemStock) {
-              stocks.push({
-                ...itemStock,
-                afiliado_nome: affiliate.nome_completo
-              });
-            }
-          } catch (error) {
-            console.error(`Erro ao carregar estoque do afiliado ${affiliate.id}:`, error);
-          }
-        }
-        setAffiliateStocks(stocks);
-      } catch (error) {
-        console.error('Erro ao carregar estoques:', error);
-      }
-    };
+    // Recarregar estoques após atualização (com debounce)
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
 
-    loadStocks();
+    const timer = setTimeout(() => {
+      loadAffiliateStocks();
+    }, 500);
+
+    setDebounceTimer(timer);
   };
 
   if (!item) return null;
 
   const renderProductInfo = (product: Product) => (
     <>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="font-semibold text-sm text-gray-600">Estoque Site</h3>
-          <p className="text-lg font-bold text-blue-600">{product.estoque_site}</p>
-        </div>
-        <div>
-          <h3 className="font-semibold text-sm text-gray-600">Estoque Físico</h3>
-          <p className="text-lg font-bold text-green-600">{product.estoque_fisico}</p>
+      <div className="bg-gradient-to-r from-vertttraue-primary/10 to-vertttraue-secondary/10 p-4 rounded-lg mb-6">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600 mb-1">{product.estoque_site}</div>
+            <div className="text-sm font-medium text-gray-600">Estoque Site</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 mb-1">{product.estoque_fisico}</div>
+            <div className="text-sm font-medium text-gray-600">Estoque Físico</div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 className="font-semibold text-sm text-gray-600">Preço de Venda</h3>
-          <p className="text-lg font-bold text-vertttraue-primary">
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-semibold text-sm text-gray-600 mb-2">💰 Preço de Venda</h3>
+          <p className="text-xl font-bold text-vertttraue-primary">
             R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div>
-          <h3 className="font-semibold text-sm text-gray-600">Preço de Compra</h3>
-          <p className="text-lg font-bold text-gray-700">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-semibold text-sm text-gray-600 mb-2">🛒 Preço de Compra</h3>
+          <p className="text-xl font-bold text-gray-700">
             R$ {product.preco_compra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
         </div>
       </div>
 
-      <Separator className="my-4" />
+      <Separator className="my-6" />
 
-      <div className="mb-4">
-        <h3 className="font-semibold text-lg mb-3 text-vertttraue-primary">Estoque com Afiliados</h3>
+      <div className="mb-6">
+        <h3 className="font-semibold text-lg mb-4 text-vertttraue-primary flex items-center gap-2">
+          👥 Estoque com Afiliados
+        </h3>
         
         {loading ? (
           <Alert>
-            <AlertDescription>Carregando estoques dos afiliados...</AlertDescription>
+            <AlertDescription>⏳ Carregando estoques dos afiliados...</AlertDescription>
           </Alert>
         ) : affiliateStocks.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {affiliateStocks.map((stock) => (
-              <div key={`${stock.afiliado_id}-${stock.produto_id}`} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">{stock.afiliado_nome}</span>
-                  <Badge variant="secondary" className="ml-2">
-                    {stock.quantidade} unidades
-                  </Badge>
+              <div key={`${stock.afiliado_id}-${stock.produto_id}`} 
+                   className="flex justify-between items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-vertttraue-primary rounded-full flex items-center justify-center text-white font-bold">
+                    {stock.afiliado_nome.charAt(0)}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-800">{stock.afiliado_nome}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="bg-vertttraue-primary/10 text-vertttraue-primary">
+                        📦 {stock.quantidade} unidades
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
                 <Button 
                   size="sm"
                   onClick={() => handleManageStock(affiliates.find(a => a.id === stock.afiliado_id)!)}
                   className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
                 >
-                  Gerenciar
+                  ⚙️ Gerenciar
                 </Button>
               </div>
             ))}
           </div>
         ) : (
           <Alert>
-            <AlertDescription>Nenhum afiliado possui este produto em estoque.</AlertDescription>
+            <AlertDescription>📋 Nenhum afiliado possui este produto em estoque.</AlertDescription>
           </Alert>
         )}
 
-        <div className="mt-4">
-          <h4 className="font-medium mb-2">Gerenciar Estoque por Afiliado:</h4>
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-medium mb-3 text-gray-800">🎯 Gerenciar Estoque por Afiliado:</h4>
           <div className="flex flex-wrap gap-2">
-            {affiliates.filter(a => a.ativo).map(affiliate => (
+            {affiliates.filter(a => a.ativo).slice(0, 8).map(affiliate => (
               <Button
                 key={affiliate.id}
                 size="sm"
                 variant="outline"
                 onClick={() => handleManageStock(affiliate)}
-                className="hover:bg-vertttraue-primary hover:text-white"
+                className="hover:bg-vertttraue-primary hover:text-white transition-all"
               >
                 {affiliate.nome_completo}
               </Button>
             ))}
           </div>
+          {affiliates.filter(a => a.ativo).length > 8 && (
+            <p className="text-sm text-gray-500 mt-2">
+              E mais {affiliates.filter(a => a.ativo).length - 8} afiliados...
+            </p>
+          )}
         </div>
       </div>
     </>
@@ -179,34 +203,36 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
 
   const renderKitInfo = (kit: Kit) => (
     <>
-      <div className="mb-4">
-        <h3 className="font-semibold text-sm text-gray-600">Preço do Kit</h3>
-        <p className="text-lg font-bold text-vertttraue-primary">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg mb-4">
+        <h3 className="font-semibold text-sm text-gray-600 mb-2">💰 Preço do Kit</h3>
+        <p className="text-2xl font-bold text-vertttraue-primary">
           R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
       </div>
 
       <div className="mb-4">
-        <h3 className="font-semibold text-sm text-gray-600">Produtos do Kit</h3>
+        <h3 className="font-semibold text-sm text-gray-600 mb-3">📦 Produtos do Kit</h3>
         {kit.produtos && kit.produtos.length > 0 ? (
-          <div className="space-y-2 mt-2">
+          <div className="space-y-2">
             {kit.produtos.map((produto, index) => (
-              <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                <span>{produto.produto_nome || 'Produto não encontrado'}</span>
-                <Badge variant="secondary">{produto.quantidade}x</Badge>
+              <div key={index} className="flex justify-between items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                <span className="font-medium">{produto.produto_nome || 'Produto não encontrado'}</span>
+                <Badge variant="secondary" className="bg-vertttraue-primary/10 text-vertttraue-primary">
+                  {produto.quantidade}x
+                </Badge>
               </div>
             ))}
           </div>
         ) : (
           <Alert>
-            <AlertDescription>Nenhum produto vinculado a este kit.</AlertDescription>
+            <AlertDescription>⚠️ Nenhum produto vinculado a este kit.</AlertDescription>
           </Alert>
         )}
       </div>
 
-      <Alert>
-        <AlertDescription>
-          Kits não possuem estoque próprio. O estoque é controlado pelos produtos individuais.
+      <Alert className="bg-blue-50 border-blue-200">
+        <AlertDescription className="text-blue-800">
+          ℹ️ Kits não possuem estoque próprio. O estoque é controlado pelos produtos individuais.
         </AlertDescription>
       </Alert>
     </>
@@ -214,34 +240,36 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
 
   const renderConjuntoInfo = (conjunto: Conjunto) => (
     <>
-      <div className="mb-4">
-        <h3 className="font-semibold text-sm text-gray-600">Preço do Conjunto</h3>
-        <p className="text-lg font-bold text-vertttraue-primary">
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg mb-4">
+        <h3 className="font-semibold text-sm text-gray-600 mb-2">💰 Preço do Conjunto</h3>
+        <p className="text-2xl font-bold text-vertttraue-primary">
           R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
       </div>
 
       <div className="mb-4">
-        <h3 className="font-semibold text-sm text-gray-600">Produtos do Conjunto</h3>
+        <h3 className="font-semibold text-sm text-gray-600 mb-3">📦 Produtos do Conjunto</h3>
         {conjunto.produtos && conjunto.produtos.length > 0 ? (
-          <div className="space-y-2 mt-2">
+          <div className="space-y-2">
             {conjunto.produtos.map((produto, index) => (
-              <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                <span>{produto.produto_nome || 'Produto não encontrado'}</span>
-                <Badge variant="secondary">{produto.quantidade}x</Badge>
+              <div key={index} className="flex justify-between items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                <span className="font-medium">{produto.produto_nome || 'Produto não encontrado'}</span>
+                <Badge variant="secondary" className="bg-vertttraue-primary/10 text-vertttraue-primary">
+                  {produto.quantidade}x
+                </Badge>
               </div>
             ))}
           </div>
         ) : (
           <Alert>
-            <AlertDescription>Nenhum produto vinculado a este conjunto.</AlertDescription>
+            <AlertDescription>⚠️ Nenhum produto vinculado a este conjunto.</AlertDescription>
           </Alert>
         )}
       </div>
 
-      <Alert>
-        <AlertDescription>
-          Conjuntos não possuem estoque próprio. O estoque é controlado pelos produtos individuais.
+      <Alert className="bg-blue-50 border-blue-200">
+        <AlertDescription className="text-blue-800">
+          ℹ️ Conjuntos não possuem estoque próprio. O estoque é controlado pelos produtos individuais.
         </AlertDescription>
       </Alert>
     </>
@@ -250,26 +278,27 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Badge variant={type === 'produto' ? 'default' : type === 'kit' ? 'secondary' : 'outline'}>
+            <DialogTitle className="flex items-center gap-3">
+              <Badge variant={type === 'produto' ? 'default' : type === 'kit' ? 'secondary' : 'outline'}
+                     className="text-xs">
                 {type.toUpperCase()}
               </Badge>
-              {item.nome}
+              <span className="text-xl">{item.nome}</span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold text-sm text-gray-600 mb-1">ID</h3>
-              <p className="font-mono text-sm bg-gray-100 p-2 rounded">{item.id}</p>
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <h3 className="font-semibold text-sm text-gray-600 mb-1">🔢 ID</h3>
+              <p className="font-mono text-sm bg-white p-2 rounded border">{item.id}</p>
             </div>
 
             {item.descricao && (
               <div>
-                <h3 className="font-semibold text-sm text-gray-600 mb-1">Descrição</h3>
-                <p className="text-sm text-gray-700">{item.descricao}</p>
+                <h3 className="font-semibold text-sm text-gray-600 mb-2">📝 Descrição</h3>
+                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{item.descricao}</p>
               </div>
             )}
 

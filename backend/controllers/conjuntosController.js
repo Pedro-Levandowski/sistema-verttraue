@@ -16,8 +16,29 @@ const getAllConjuntos = async (req, res) => {
       ORDER BY c.created_at DESC
     `);
 
-    console.log(`✅ ${result.rows.length} conjuntos encontrados`);
-    res.json(result.rows);
+    // Buscar produtos de cada conjunto
+    const conjuntos = [];
+    for (const conjunto of result.rows) {
+      const produtosResult = await pool.query(`
+        SELECT 
+          cp.*,
+          p.nome as produto_nome,
+          p.preco as produto_preco,
+          p.estoque_site as produto_estoque
+        FROM conjunto_produtos cp
+        JOIN produtos p ON cp.produto_id = p.id
+        WHERE cp.conjunto_id = $1
+        ORDER BY cp.id
+      `, [conjunto.id]);
+
+      conjuntos.push({
+        ...conjunto,
+        produtos: produtosResult.rows
+      });
+    }
+
+    console.log(`✅ ${conjuntos.length} conjuntos encontrados`);
+    res.json(conjuntos);
   } catch (error) {
     console.error('❌ Erro ao buscar conjuntos:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -89,10 +110,12 @@ const createConjunto = async (req, res) => {
 
     // Inserir produtos do conjunto se fornecidos
     if (produtos && Array.isArray(produtos) && produtos.length > 0) {
+      console.log('🎯 Processando', produtos.length, 'produtos para o conjunto');
+      
       for (const produto of produtos) {
         const { produto_id, quantidade } = produto;
         
-        console.log('🎯 Adicionando produto ao conjunto:', { produto_id, quantidade });
+        console.log('🎯 Processando produto:', { produto_id, quantidade });
         
         if (!produto_id || !quantidade || quantidade <= 0) {
           console.warn('⚠️ Produto inválido ignorado:', produto);
@@ -110,11 +133,16 @@ const createConjunto = async (req, res) => {
           continue;
         }
 
+        // Inserir produto no conjunto
         await client.query(`
           INSERT INTO conjunto_produtos (conjunto_id, produto_id, quantidade)
           VALUES ($1, $2, $3)
         `, [id, produto_id, quantidade]);
+        
+        console.log('✅ Produto adicionado ao conjunto:', { conjunto_id: id, produto_id, quantidade });
       }
+    } else {
+      console.log('⚠️ Nenhum produto fornecido para o conjunto');
     }
 
     await client.query('COMMIT');

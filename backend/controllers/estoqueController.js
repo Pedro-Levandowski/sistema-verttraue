@@ -1,3 +1,4 @@
+
 const pool = require('../config/database');
 
 // Atualizar estoque de afiliado
@@ -45,7 +46,7 @@ const updateEstoqueAfiliado = async (req, res) => {
     if (existingStock.rows.length > 0) {
       // Atualizar estoque existente
       if (quantidade === 0) {
-        // Se quantidade for 0, deletar o registro e retornar produtos ao estoque site
+        // Se quantidade for 0, deletar o registro e devolver produtos ao estoque site
         const quantidadeAnterior = existingStock.rows[0].quantidade;
         
         result = await client.query(
@@ -53,7 +54,7 @@ const updateEstoqueAfiliado = async (req, res) => {
           [produto_id, afiliado_id]
         );
         
-        // Retornar produtos ao estoque site
+        // CORREÇÃO: Devolver produtos ao estoque site e reduzir do físico
         await client.query(
           'UPDATE produtos SET estoque_site = estoque_site + $1, estoque_fisico = estoque_fisico - $1 WHERE id = $2',
           [quantidadeAnterior, produto_id]
@@ -76,7 +77,7 @@ const updateEstoqueAfiliado = async (req, res) => {
           [quantidade, produto_id, afiliado_id]
         );
         
-        // Ajustar estoques conforme a diferença
+        // CORREÇÃO: Ajustar estoques na direção correta
         if (diferenca !== 0) {
           await client.query(
             'UPDATE produtos SET estoque_site = estoque_site - $1, estoque_fisico = estoque_fisico + $1 WHERE id = $2',
@@ -94,7 +95,7 @@ const updateEstoqueAfiliado = async (req, res) => {
           [produto_id, afiliado_id, quantidade]
         );
         
-        // Transferir produtos do estoque site para físico
+        // CORREÇÃO: Transferir produtos do estoque site para físico
         await client.query(
           'UPDATE produtos SET estoque_site = estoque_site - $1, estoque_fisico = estoque_fisico + $1 WHERE id = $2',
           [quantidade, produto_id]

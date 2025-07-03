@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Listar todas as vendas
@@ -126,22 +125,12 @@ const createVenda = async (req, res) => {
       return res.status(400).json({ error: 'Produtos são obrigatórios' });
     }
 
-    // Gerar ID sequencial no padrão VENDA00001
-    const lastVendaResult = await client.query(`
-      SELECT id FROM vendas 
-      WHERE id LIKE 'VENDA%' 
-      ORDER BY id DESC 
-      LIMIT 1
-    `);
+    // Gerar ID único com timestamp para evitar duplicatas
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const vendaId = `VENDA${timestamp}${random}`;
 
-    let nextNumber = 1;
-    if (lastVendaResult.rows.length > 0) {
-      const lastId = lastVendaResult.rows[0].id;
-      const lastNumber = parseInt(lastId.replace('VENDA', ''));
-      nextNumber = lastNumber + 1;
-    }
-
-    const vendaId = `VENDA${nextNumber.toString().padStart(5, '0')}`;
+    console.log('💰 ID da venda gerado:', vendaId);
 
     // Inserir venda
     const vendaResult = await client.query(`
