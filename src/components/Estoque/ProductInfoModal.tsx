@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ interface ProductInfoModalProps {
 
 const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, item, type }) => {
   const { affiliates } = useAffiliates();
-  const { getAffiliateStock } = useEstoque();
+  const { getAffiliateStock, updateAffiliateStock } = useEstoque();
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
   const [affiliateStocks, setAffiliateStocks] = useState<any[]>([]);
@@ -288,9 +287,20 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ isOpen, onClose, it
             setShowEstoqueModal(false);
             setSelectedAffiliate(null);
           }}
-          affiliates={affiliates}
+          onUpdateStock={async (affiliateId: string, quantity: number) => {
+            try {
+              await updateAffiliateStock({
+                produto_id: (item as Product).id,
+                afiliado_id: affiliateId,
+                quantidade: quantity
+              });
+              refreshStocks();
+            } catch (error) {
+              console.error('Erro ao atualizar estoque:', error);
+            }
+          }}
           product={type === 'produto' ? (item as Product) : null}
-          onSuccess={refreshStocks}
+          affiliates={affiliates}
         />
       )}
     </>
