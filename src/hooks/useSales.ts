@@ -19,8 +19,19 @@ export const useSales = () => {
       console.log('✅ [useSales] Dados recebidos da API:', data);
       
       if (Array.isArray(data)) {
-        setSales(data);
-        console.log(`✅ [useSales] ${data.length} vendas carregadas com sucesso`);
+        // Normalizar dados das vendas
+        const normalizedSales = data.map(sale => ({
+          ...sale,
+          id: sale.id || `temp-${Date.now()}-${Math.random()}`,
+          data_venda: sale.data_venda || sale.data || new Date().toISOString(),
+          valor_total: Number(sale.valor_total || sale.total || 0),
+          produtos: Array.isArray(sale.produtos) ? sale.produtos : 
+                   Array.isArray(sale.itens) ? sale.itens : [],
+          tipo: sale.tipo || 'fisica'
+        }));
+        
+        setSales(normalizedSales);
+        console.log(`✅ [useSales] ${normalizedSales.length} vendas carregadas e normalizadas`);
       } else {
         console.warn('⚠️ [useSales] Dados não são um array, usando array vazio');
         setSales([]);
@@ -41,10 +52,23 @@ export const useSales = () => {
     console.log('➕ [useSales] Criando venda:', saleData);
     try {
       setLoading(true);
+      setError(null);
       const newSale = await salesAPI.create(saleData);
-      setSales(prev => [...prev, newSale]);
+      
+      // Normalizar nova venda
+      const normalizedSale = {
+        ...newSale,
+        id: newSale.id || `temp-${Date.now()}-${Math.random()}`,
+        data_venda: newSale.data_venda || newSale.data || new Date().toISOString(),
+        valor_total: Number(newSale.valor_total || newSale.total || 0),
+        produtos: Array.isArray(newSale.produtos) ? newSale.produtos : 
+                 Array.isArray(newSale.itens) ? newSale.itens : [],
+        tipo: newSale.tipo || 'fisica'
+      };
+      
+      setSales(prev => [...prev, normalizedSale]);
       console.log('✅ [useSales] Venda criada com sucesso');
-      return newSale;
+      return normalizedSale;
     } catch (err) {
       console.error('❌ [useSales] Erro ao criar venda:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar venda';
@@ -59,10 +83,23 @@ export const useSales = () => {
     console.log('🔄 [useSales] Atualizando venda:', id);
     try {
       setLoading(true);
+      setError(null);
       const updatedSale = await salesAPI.update(id, saleData);
-      setSales(prev => prev.map(s => s.id === id ? updatedSale : s));
+      
+      // Normalizar venda atualizada
+      const normalizedSale = {
+        ...updatedSale,
+        id: updatedSale.id || id,
+        data_venda: updatedSale.data_venda || updatedSale.data || new Date().toISOString(),
+        valor_total: Number(updatedSale.valor_total || updatedSale.total || 0),
+        produtos: Array.isArray(updatedSale.produtos) ? updatedSale.produtos : 
+                 Array.isArray(updatedSale.itens) ? updatedSale.itens : [],
+        tipo: updatedSale.tipo || 'fisica'
+      };
+      
+      setSales(prev => prev.map(s => s.id === id ? normalizedSale : s));
       console.log('✅ [useSales] Venda atualizada com sucesso');
-      return updatedSale;
+      return normalizedSale;
     } catch (err) {
       console.error('❌ [useSales] Erro ao atualizar venda:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar venda';
@@ -77,6 +114,7 @@ export const useSales = () => {
     console.log('🗑️ [useSales] Deletando venda:', id);
     try {
       setLoading(true);
+      setError(null);
       await salesAPI.delete(id);
       setSales(prev => prev.filter(s => s.id !== id));
       console.log('✅ [useSales] Venda deletada com sucesso');
@@ -97,8 +135,8 @@ export const useSales = () => {
 
   // SEMPRE retornar um objeto válido
   return {
-    sales: sales || [],
-    loading: loading,
+    sales: Array.isArray(sales) ? sales : [],
+    loading: Boolean(loading),
     error: error,
     fetchSales,
     createSale,

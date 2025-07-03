@@ -19,8 +19,23 @@ export const useProducts = () => {
       console.log('✅ [useProducts] Dados recebidos:', data);
       
       if (Array.isArray(data)) {
-        setProducts(data);
-        console.log(`✅ [useProducts] ${data.length} produtos carregados com sucesso`);
+        // Normalizar dados dos produtos
+        const normalizedProducts = data.map(product => ({
+          ...product,
+          id: product.id || `temp-${Date.now()}-${Math.random()}`,
+          nome: product.nome || 'Produto sem nome',
+          descricao: product.descricao || '',
+          estoque_fisico: Number(product.estoque_fisico || 0),
+          estoque_site: Number(product.estoque_site || 0),
+          preco: Number(product.preco || 0),
+          preco_compra: Number(product.preco_compra || 0),
+          fornecedor: product.fornecedor || null,
+          afiliado_estoque: Array.isArray(product.afiliado_estoque) ? product.afiliado_estoque : [],
+          fotos: Array.isArray(product.fotos) ? product.fotos : []
+        }));
+        
+        setProducts(normalizedProducts);
+        console.log(`✅ [useProducts] ${normalizedProducts.length} produtos carregados e normalizados`);
       } else {
         console.warn('⚠️ [useProducts] Dados não são um array, usando array vazio');
         setProducts([]);
@@ -41,10 +56,27 @@ export const useProducts = () => {
     console.log('➕ [useProducts] Criando produto:', productData.nome);
     try {
       setLoading(true);
+      setError(null);
       const newProduct = await productsAPI.create(productData);
-      setProducts(prev => [...prev, newProduct]);
+      
+      // Normalizar novo produto
+      const normalizedProduct = {
+        ...newProduct,
+        id: newProduct.id || `temp-${Date.now()}-${Math.random()}`,
+        nome: newProduct.nome || 'Produto sem nome',
+        descricao: newProduct.descricao || '',
+        estoque_fisico: Number(newProduct.estoque_fisico || 0),
+        estoque_site: Number(newProduct.estoque_site || 0),
+        preco: Number(newProduct.preco || 0),
+        preco_compra: Number(newProduct.preco_compra || 0),
+        fornecedor: newProduct.fornecedor || null,
+        afiliado_estoque: Array.isArray(newProduct.afiliado_estoque) ? newProduct.afiliado_estoque : [],
+        fotos: Array.isArray(newProduct.fotos) ? newProduct.fotos : []
+      };
+      
+      setProducts(prev => [...prev, normalizedProduct]);
       console.log('✅ [useProducts] Produto criado com sucesso');
-      return newProduct;
+      return normalizedProduct;
     } catch (err) {
       console.error('❌ [useProducts] Erro ao criar produto:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar produto';
@@ -59,10 +91,27 @@ export const useProducts = () => {
     console.log('🔄 [useProducts] Atualizando produto:', id);
     try {
       setLoading(true);
+      setError(null);
       const updatedProduct = await productsAPI.update(id, productData);
-      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+      
+      // Normalizar produto atualizado
+      const normalizedProduct = {
+        ...updatedProduct,
+        id: updatedProduct.id || id,
+        nome: updatedProduct.nome || 'Produto sem nome',
+        descricao: updatedProduct.descricao || '',
+        estoque_fisico: Number(updatedProduct.estoque_fisico || 0),
+        estoque_site: Number(updatedProduct.estoque_site || 0),
+        preco: Number(updatedProduct.preco || 0),
+        preco_compra: Number(updatedProduct.preco_compra || 0),
+        fornecedor: updatedProduct.fornecedor || null,
+        afiliado_estoque: Array.isArray(updatedProduct.afiliado_estoque) ? updatedProduct.afiliado_estoque : [],
+        fotos: Array.isArray(updatedProduct.fotos) ? updatedProduct.fotos : []
+      };
+      
+      setProducts(prev => prev.map(p => p.id === id ? normalizedProduct : p));
       console.log('✅ [useProducts] Produto atualizado com sucesso');
-      return updatedProduct;
+      return normalizedProduct;
     } catch (err) {
       console.error('❌ [useProducts] Erro ao atualizar produto:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar produto';
@@ -77,6 +126,7 @@ export const useProducts = () => {
     console.log('🗑️ [useProducts] Deletando produto:', id);
     try {
       setLoading(true);
+      setError(null);
       await productsAPI.delete(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       console.log('✅ [useProducts] Produto deletado com sucesso');
@@ -97,8 +147,8 @@ export const useProducts = () => {
 
   // SEMPRE retornar um objeto válido - NUNCA undefined
   return {
-    products: products || [],
-    loading: loading,
+    products: Array.isArray(products) ? products : [],
+    loading: Boolean(loading),
     error: error,
     fetchProducts,
     createProduct,
