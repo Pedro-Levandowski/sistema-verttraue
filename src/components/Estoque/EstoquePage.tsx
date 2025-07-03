@@ -1,429 +1,306 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Gift, Layers, Edit, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Header from '../Layout/Header';
+import ProductModal from './ProductModal';
 import ProdutoModal from './ProdutoModal';
-import KitModal from './KitModal';
-import ConjuntoModal from './ConjuntoModal';
-import AfiliadoEstoqueModal from './AfiliadoEstoqueModal';
 import ProductInfoModal from './ProductInfoModal';
-import ProductActions from './ProductActions';
+import KitModal from './KitModal';
+import KitDetalhesModal from './KitDetalhesModal';
+import ConjuntoModal from './ConjuntoModal';
+import ConjuntoDetalhesModal from './ConjuntoDetalhesModal';
+import AfiliadoEstoqueModal from './AfiliadoEstoqueModal';
 import ConfirmModal from '../Layout/ConfirmModal';
 import { useProducts } from '../../hooks/useProducts';
 import { useSuppliers } from '../../hooks/useSuppliers';
 import { useAffiliates } from '../../hooks/useAffiliates';
 import { useKits } from '../../hooks/useKits';
 import { useConjuntos } from '../../hooks/useConjuntos';
-import { estoqueAPI } from '../../services/api';
 import { Product, Kit, Conjunto } from '../../types';
+import { Eye, Edit, Trash2, Users } from 'lucide-react';
 
 interface EstoquePageProps {
   onBack: () => void;
 }
 
 const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
-  console.log('🚀 [EstoquePage] Inicializando componente...');
+  const { products, loading: productsLoading, error: productsError, createProduct, updateProduct, deleteProduct } = useProducts();
+  const { suppliers } = useSuppliers();
+  const { affiliates } = useAffiliates();
+  const { kits, loading: kitsLoading, createKit, updateKit, deleteKit } = useKits();
+  const { conjuntos, loading: conjuntosLoading, createConjunto, updateConjunto, deleteConjunto } = useConjuntos();
 
-  // Hooks com proteção contra undefined
-  const productsHook = useProducts();
-  const suppliersHook = useSuppliers();
-  const affiliatesHook = useAffiliates();
-  const kitsHook = useKits();
-  const conjuntosHook = useConjuntos();
-
-  // Extrair valores dos hooks com fallbacks seguros
-  const {
-    products = [],
-    loading: productsLoading = false,
-    error: productsError = null,
-    createProduct,
-    updateProduct,
-    deleteProduct
-  } = productsHook || {};
-
-  const { suppliers = [] } = suppliersHook || {};
-  const { affiliates = [] } = affiliatesHook || {};
-  const {
-    kits = [],
-    loading: kitsLoading = false,
-    createKit,
-    updateKit,
-    deleteKit
-  } = kitsHook || {};
-
-  const {
-    conjuntos = [],
-    loading: conjuntosLoading = false,
-    createConjunto,
-    updateConjunto,
-    deleteConjunto
-  } = conjuntosHook || {};
-
-  // Estados locais
-  const [activeTab, setActiveTab] = useState('produtos');
-  const [showModal, setShowModal] = useState(false);
-  const [showKitModal, setShowKitModal] = useState(false);
-  const [showConjuntoModal, setShowConjuntoModal] = useState(false);
-  const [showAfiliadoEstoqueModal, setShowAfiliadoEstoqueModal] = useState(false);
+  // Estados para modais
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showProdutoModal, setShowProdutoModal] = useState(false);
   const [showProductInfoModal, setShowProductInfoModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editingKit, setEditingKit] = useState<Kit | null>(null);
-  const [editingConjunto, setEditingConjunto] = useState<Conjunto | null>(null);
+  const [showKitModal, setShowKitModal] = useState(false);
+  const [showKitDetalhesModal, setShowKitDetalhesModal] = useState(false);
+  const [showConjuntoModal, setShowConjuntoModal] = useState(false);
+  const [showConjuntoDetalhesModal, setShowConjuntoDetalhesModal] = useState(false);
+  const [showAfiliadoEstoqueModal, setShowAfiliadoEstoqueModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Estados para itens selecionados
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedKit, setSelectedKit] = useState<Kit | null>(null);
+  const [selectedConjunto, setSelectedConjunto] = useState<Conjunto | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'product' | 'kit' | 'conjunto', item: any } | null>(null);
+
+  // Estados para busca
   const [searchTerm, setSearchTerm] = useState('');
-  const [confirmAction, setConfirmAction] = useState<{
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  } | null>(null);
 
-  console.log('📊 [EstoquePage] Estado atual:', {
-    productsCount: products.length,
-    productsLoading,
-    productsError,
-    kitsCount: kits.length,
-    conjuntosCount: conjuntos.length
-  });
-
-  // Filtros seguros
+  // Filtros
   const filteredProducts = products.filter(product =>
-    product?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product?.fornecedor?.nome && product.fornecedor.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+    product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredKits = kits.filter(kit =>
-    kit?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kit?.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    kit.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    kit.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredConjuntos = conjuntos.filter(conjunto =>
-    conjunto?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conjunto?.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    conjunto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conjunto.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handlers de produto
-  const handleViewDetails = (product: Product) => {
-    console.log('👁️ [EstoquePage] Visualizando detalhes do produto:', product?.id);
+  // Handlers para produtos
+  const handleShowProductDetails = (product: Product) => {
     setSelectedProduct(product);
     setShowProductInfoModal(true);
   };
 
-  const handleEdit = (product: Product) => {
-    console.log('🔧 [EstoquePage] Editando produto:', product?.id);
-    setEditingProduct(product);
-    setShowModal(true);
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setShowProdutoModal(true);
   };
 
-  const handleDelete = (product: Product) => {
-    console.log('🗑️ [EstoquePage] Solicitando exclusão do produto:', product?.id);
-    setConfirmAction({
-      title: 'Confirmar Exclusão',
-      message: `Tem certeza que deseja excluir o produto "${product?.nome || 'N/A'}"? Esta ação não pode ser desfeita.`,
-      onConfirm: async () => {
-        try {
-          if (deleteProduct) {
-            await deleteProduct(product.id);
-            console.log('✅ [EstoquePage] Produto excluído com sucesso');
-          }
-        } catch (error) {
-          console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
-          alert('Erro ao excluir produto. Tente novamente.');
-        }
-      }
-    });
-    setShowConfirmModal(true);
-  };
-
-  const handleSave = async (productData: any) => {
-    console.log('💾 [EstoquePage] Salvando produto:', productData);
-    try {
-      if (editingProduct && updateProduct) {
-        await updateProduct(editingProduct.id, productData);
-        console.log('✅ [EstoquePage] Produto atualizado com sucesso');
-      } else if (createProduct) {
-        await createProduct(productData);
-        console.log('✅ [EstoquePage] Produto criado com sucesso');
-      }
-      setEditingProduct(null);
-      setShowModal(false);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao salvar produto:', error);
-      alert('Erro ao salvar produto. Verifique os dados e tente novamente.');
-    }
+  const handleDeleteProduct = (product: Product) => {
+    setItemToDelete({ type: 'product', item: product });
+    setShowDeleteModal(true);
   };
 
   // Handlers para kits
-  const handleKitSave = async (kitData: any) => {
-    try {
-      console.log('💾 [EstoquePage] Salvando kit:', kitData);
-      if (editingKit && updateKit) {
-        await updateKit(editingKit.id, kitData);
-      } else if (createKit) {
-        await createKit(kitData);
-      }
-      setEditingKit(null);
-      setShowKitModal(false);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao salvar kit:', error);
-    }
+  const handleShowKitDetails = (kit: Kit) => {
+    setSelectedKit(kit);
+    setShowKitDetalhesModal(true);
+  };
+
+  const handleEditKit = (kit: Kit) => {
+    setSelectedKit(kit);
+    setShowKitModal(true);
+  };
+
+  const handleDeleteKit = (kit: Kit) => {
+    setItemToDelete({ type: 'kit', item: kit });
+    setShowDeleteModal(true);
   };
 
   // Handlers para conjuntos
-  const handleConjuntoSave = async (conjuntoData: any) => {
-    try {
-      console.log('💾 [EstoquePage] Salvando conjunto:', conjuntoData);
-      if (editingConjunto && updateConjunto) {
-        await updateConjunto(editingConjunto.id, conjuntoData);
-      } else if (createConjunto) {
-        await createConjunto(conjuntoData);
+  const handleShowConjuntoDetails = (conjunto: Conjunto) => {
+    setSelectedConjunto(conjunto);
+    setShowConjuntoDetalhesModal(true);
+  };
+
+  const handleEditConjunto = (conjunto: Conjunto) => {
+    setSelectedConjunto(conjunto);
+    setShowConjuntoModal(true);
+  };
+
+  const handleDeleteConjunto = (conjunto: Conjunto) => {
+    setItemToDelete({ type: 'conjunto', item: conjunto });
+    setShowDeleteModal(true);
+  };
+
+  // Confirmar exclusão
+  const confirmDelete = async () => {
+    if (itemToDelete) {
+      try {
+        switch (itemToDelete.type) {
+          case 'product':
+            await deleteProduct(itemToDelete.item.id);
+            break;
+          case 'kit':
+            await deleteKit(itemToDelete.item.id);
+            break;
+          case 'conjunto':
+            await deleteConjunto(itemToDelete.item.id);
+            break;
+        }
+        console.log(`✅ ${itemToDelete.type} excluído com sucesso`);
+        setShowDeleteModal(false);
+        setItemToDelete(null);
+      } catch (error) {
+        console.error(`❌ Erro ao excluir ${itemToDelete.type}:`, error);
       }
-      setEditingConjunto(null);
-      setShowConjuntoModal(false);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao salvar conjunto:', error);
     }
   };
-
-  const handleUpdateAffiliateStock = async (affiliateId: string, quantity: number) => {
-    if (!selectedProduct) return;
-    
-    try {
-      console.log('📦 [EstoquePage] Atualizando estoque do afiliado:', { affiliateId, quantity });
-      await estoqueAPI.updateAfiliadoEstoque(selectedProduct.id, affiliateId, quantity);
-      console.log('✅ [EstoquePage] Estoque do afiliado atualizado');
-      window.location.reload();
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao atualizar estoque do afiliado:', error);
-    }
-  };
-
-  // Tratamento de erro
-  if (productsError) {
-    console.error('❌ [EstoquePage] Erro crítico na página de estoque:', productsError);
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <Header title="Gestão de Estoque" onBack={onBack} />
-        <div className="container mx-auto p-6">
-          <Alert className="border-red-200 bg-red-50">
-            <AlertDescription className="text-red-700">
-              Erro ao carregar dados do estoque: {productsError}
-            </AlertDescription>
-          </Alert>
-          <div className="mt-4 space-x-2">
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Recarregar Página
-            </Button>
-            <Button 
-              onClick={onBack} 
-              variant="outline"
-            >
-              Voltar ao Dashboard
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <Header title="Gestão de Estoque" onBack={onBack} />
+    <div className="min-h-screen bg-gradient-to-br from-vertttraue-white to-vertttraue-gray">
+      <Header
+        title="Gestão de Estoque"
+        onBack={onBack}
+        actions={
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAfiliadoEstoqueModal(true)}
+              variant="outline"
+              className="hover:bg-vertttraue-primary hover:text-white"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Estoque Afiliados
+            </Button>
+          </div>
+        }
+      />
 
       <div className="container mx-auto p-6">
-        {productsLoading && (
+        {/* Indicadores de carregamento e erro */}
+        {(productsLoading || kitsLoading || conjuntosLoading) && (
           <Alert className="mb-4">
-            <AlertDescription>Carregando produtos do banco de dados...</AlertDescription>
+            <AlertDescription>Carregando dados do estoque...</AlertDescription>
           </Alert>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full flex justify-center">
-            <TabsTrigger value="produtos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-              <Package className="w-4 h-4 mr-2" />
-              Produtos
-            </TabsTrigger>
-            <TabsTrigger value="kits" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-              <Gift className="w-4 h-4 mr-2" />
-              Kits
-            </TabsTrigger>
-            <TabsTrigger value="conjuntos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-              <Layers className="w-4 h-4 mr-2" />
-              Conjuntos
-            </TabsTrigger>
+        {productsError && (
+          <Alert className="mb-4 border-red-200 bg-red-50">
+            <AlertDescription className="text-red-700">
+              ❌ Erro ao carregar produtos: {productsError}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <Input
+            placeholder="Buscar produtos, kits ou conjuntos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+        </div>
+
+        <Tabs defaultValue="produtos" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="produtos">Produtos ({products.length})</TabsTrigger>
+            <TabsTrigger value="kits">Kits ({kits.length})</TabsTrigger>
+            <TabsTrigger value="conjuntos">Conjuntos ({conjuntos.length})</TabsTrigger>
           </TabsList>
 
-          <div className="flex flex-col md:flex-row gap-4 my-6">
-            <Input
-              placeholder="Buscar produtos, kits ou conjuntos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => {
-                console.log('➕ [EstoquePage] Abrindo modal de novo produto');
-                setEditingProduct(null);
-                setShowModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={productsLoading}
-            >
-              Novo Produto
-            </Button>
-            <Button
-              onClick={() => {
-                console.log('➕ [EstoquePage] Abrindo modal de novo kit');
-                setEditingKit(null);
-                setShowKitModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={kitsLoading}
-            >
-              Novo Kit
-            </Button>
-            <Button
-              onClick={() => {
-                console.log('➕ [EstoquePage] Abrindo modal de novo conjunto');
-                setEditingConjunto(null);
-                setShowConjuntoModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={conjuntosLoading}
-            >
-              Novo Conjunto
-            </Button>
-          </div>
-
-          <TabsContent value="produtos">
+          <TabsContent value="produtos" className="mt-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-blue-800">
-                Produtos em Estoque ({filteredProducts.length})
-              </h2>
-              
-              {filteredProducts.length === 0 && !productsLoading ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Nenhum produto encontrado no banco de dados.</p>
-                  <p className="text-sm">Adicione o primeiro produto clicando no botão acima.</p>
-                </div>
-              ) : (
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-vertttraue-primary">Produtos</h2>
+                <Button
+                  onClick={() => setShowProdutoModal(true)}
+                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+                >
+                  Novo Produto
+                </Button>
+              </div>
+
+              {filteredProducts.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3">ID</th>
-                        <th className="text-left p-3">Nome</th>
-                        <th className="text-left p-3">Fornecedor</th>
-                        <th className="text-left p-3">Estoque</th>
-                        <th className="text-left p-3">Preço</th>
-                        <th className="text-left p-3">Ações</th>
+                        <th className="text-left p-2">ID</th>
+                        <th className="text-left p-2">Nome</th>
+                        <th className="text-left p-2">Estoque Site</th>
+                        <th className="text-left p-2">Preço</th>
+                        <th className="text-left p-2">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredProducts.map((product) => (
                         <tr key={product.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-mono text-xs">{product.id}</td>
-                          <td className="p-3 font-semibold">{product.nome}</td>
-                          <td className="p-3">{product.fornecedor?.nome || 'N/A'}</td>
-                          <td className="p-3">
-                            <div className="flex gap-2">
-                              <Badge variant="outline">F: {product.estoque_fisico}</Badge>
-                              <Badge variant="outline">S: {product.estoque_site}</Badge>
-                            </div>
+                          <td className="p-2 font-mono text-xs">{product.id}</td>
+                          <td className="p-2">{product.nome}</td>
+                          <td className="p-2">
+                            <Badge variant={product.estoque_site > 0 ? "default" : "destructive"}>
+                              {product.estoque_site}
+                            </Badge>
                           </td>
-                          <td className="p-3 font-bold text-blue-600">
+                          <td className="p-2 font-bold text-vertttraue-primary">
                             R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3">
-                            <ProductActions
-                              product={product}
-                              onView={handleViewDetails}
-                              onEdit={handleEdit}
-                              onDelete={handleDelete}
-                            />
+                          <td className="p-2">
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="outline" onClick={() => handleShowProductDetails(product)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteProduct(product)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? `Nenhum produto encontrado para "${searchTerm}"` : 'Nenhum produto cadastrado'}
+                </div>
               )}
             </div>
           </TabsContent>
 
-          <TabsContent value="kits">
+          <TabsContent value="kits" className="mt-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-blue-600">Kits Disponíveis ({filteredKits.length})</h2>
-              {filteredKits.length === 0 && !kitsLoading ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Nenhum kit encontrado no banco de dados.</p>
-                  <p className="text-sm">Adicione o primeiro kit clicando no botão acima.</p>
-                </div>
-              ) : (
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-vertttraue-primary">Kits</h2>
+                <Button
+                  onClick={() => setShowKitModal(true)}
+                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+                >
+                  Novo Kit
+                </Button>
+              </div>
+
+              {filteredKits.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3">ID</th>
-                        <th className="text-left p-3">Nome</th>
-                        <th className="text-left p-3">Preço</th>
-                        <th className="text-left p-3">Estoque</th>
-                        <th className="text-left p-3">Ações</th>
+                        <th className="text-left p-2">ID</th>
+                        <th className="text-left p-2">Nome</th>
+                        <th className="text-left p-2">Produtos</th>
+                        <th className="text-left p-2">Preço</th>
+                        <th className="text-left p-2">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredKits.map((kit) => (
                         <tr key={kit.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-mono text-xs">{kit.id}</td>
-                          <td className="p-3 font-semibold">{kit.nome}</td>
-                          <td className="p-3 font-bold text-blue-600">
+                          <td className="p-2 font-mono text-xs">{kit.id}</td>
+                          <td className="p-2">{kit.nome}</td>
+                          <td className="p-2">
+                            <Badge>{kit.produtos?.length || 0}</Badge>
+                          </td>
+                          <td className="p-2 font-bold text-vertttraue-primary">
                             R$ {kit.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3">{kit.estoque_disponivel}</td>
-                          <td className="p-3">
+                          <td className="p-2">
                             <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingKit(kit);
-                                  setShowKitModal(true);
-                                }}
-                                className="hover:bg-blue-600 hover:text-white text-xs"
-                              >
-                                <Edit className="w-3 h-3" />
+                              <Button size="sm" variant="outline" onClick={() => handleShowKitDetails(kit)}>
+                                <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    title: 'Confirmar Exclusão',
-                                    message: `Tem certeza que deseja excluir o kit "${kit.nome}"? Esta ação não pode ser desfeita.`,
-                                    onConfirm: async () => {
-                                      try {
-                                        if (deleteKit) {
-                                          await deleteKit(kit.id);
-                                          console.log('✅ Kit excluído com sucesso');
-                                        }
-                                      } catch (error) {
-                                        console.error('❌ Erro ao excluir kit:', error);
-                                      }
-                                    }
-                                  });
-                                  setShowConfirmModal(true);
-                                }}
-                                className="hover:bg-red-500 hover:text-white text-xs"
-                              >
-                                <Trash2 className="w-3 h-3" />
+                              <Button size="sm" variant="outline" onClick={() => handleEditKit(kit)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteKit(kit)}>
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -431,76 +308,60 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? `Nenhum kit encontrado para "${searchTerm}"` : 'Nenhum kit cadastrado'}
                 </div>
               )}
             </div>
           </TabsContent>
 
-          <TabsContent value="conjuntos">
+          <TabsContent value="conjuntos" className="mt-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4 text-blue-600">Conjuntos Disponíveis ({filteredConjuntos.length})</h2>
-              {filteredConjuntos.length === 0 && !conjuntosLoading ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Nenhum conjunto encontrado no banco de dados.</p>
-                  <p className="text-sm">Adicione o primeiro conjunto clicando no botão acima.</p>
-                </div>
-              ) : (
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-vertttraue-primary">Conjuntos</h2>
+                <Button
+                  onClick={() => setShowConjuntoModal(true)}
+                  className="bg-vertttraue-primary hover:bg-vertttraue-primary/80"
+                >
+                  Novo Conjunto
+                </Button>
+              </div>
+
+              {filteredConjuntos.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3">ID</th>
-                        <th className="text-left p-3">Nome</th>
-                        <th className="text-left p-3">Preço</th>
-                        <th className="text-left p-3">Estoque</th>
-                        <th className="text-left p-3">Ações</th>
+                        <th className="text-left p-2">ID</th>
+                        <th className="text-left p-2">Nome</th>
+                        <th className="text-left p-2">Produtos</th>
+                        <th className="text-left p-2">Preço</th>
+                        <th className="text-left p-2">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredConjuntos.map((conjunto) => (
                         <tr key={conjunto.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-mono text-xs">{conjunto.id}</td>
-                          <td className="p-3 font-semibold">{conjunto.nome}</td>
-                          <td className="p-3 font-bold text-blue-600">
+                          <td className="p-2 font-mono text-xs">{conjunto.id}</td>
+                          <td className="p-2">{conjunto.nome}</td>
+                          <td className="p-2">
+                            <Badge>{conjunto.produtos?.length || 0}</Badge>
+                          </td>
+                          <td className="p-2 font-bold text-vertttraue-primary">
                             R$ {conjunto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3">{conjunto.estoque_disponivel}</td>
-                          <td className="p-3">
+                          <td className="p-2">
                             <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingConjunto(conjunto);
-                                  setShowConjuntoModal(true);
-                                }}
-                                className="hover:bg-blue-600 hover:text-white text-xs"
-                              >
-                                <Edit className="w-3 h-3" />
+                              <Button size="sm" variant="outline" onClick={() => handleShowConjuntoDetails(conjunto)}>
+                                <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setConfirmAction({
-                                    title: 'Confirmar Exclusão',
-                                    message: `Tem certeza que deseja excluir o conjunto "${conjunto.nome}"? Esta ação não pode ser desfeita.`,
-                                    onConfirm: async () => {
-                                      try {
-                                        if (deleteConjunto) {
-                                          await deleteConjunto(conjunto.id);
-                                          console.log('✅ Conjunto excluído com sucesso');
-                                        }
-                                      } catch (error) {
-                                        console.error('❌ Erro ao excluir conjunto:', error);
-                                      }
-                                    }
-                                  });
-                                  setShowConfirmModal(true);
-                                }}
-                                className="hover:bg-red-500 hover:text-white text-xs"
-                              >
-                                <Trash2 className="w-3 h-3" />
+                              <Button size="sm" variant="outline" onClick={() => handleEditConjunto(conjunto)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteConjunto(conjunto)}>
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -508,6 +369,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? `Nenhum conjunto encontrado para "${searchTerm}"` : 'Nenhum conjunto cadastrado'}
                 </div>
               )}
             </div>
@@ -516,78 +381,83 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       </div>
 
       {/* Modais */}
-      {showModal && (
-        <ProdutoModal
-          isOpen={showModal}
-          onClose={() => {
-            setShowModal(false);
-            setEditingProduct(null);
-          }}
-          onSave={handleSave}
-          product={editingProduct}
-          suppliers={suppliers}
-        />
-      )}
+      <ProductModal
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        products={products}
+        suppliers={suppliers}
+      />
 
-      {showKitModal && (
-        <KitModal
-          isOpen={showKitModal}
-          onClose={() => {
-            setShowKitModal(false);
-            setEditingKit(null);
-          }}
-          onSave={handleKitSave}
-          kit={editingKit}
-          products={products}
-        />
-      )}
+      <ProdutoModal
+        isOpen={showProdutoModal}
+        onClose={() => {
+          setShowProdutoModal(false);
+          setSelectedProduct(null);
+        }}
+        onSave={selectedProduct ? updateProduct : createProduct}
+        suppliers={suppliers}
+        product={selectedProduct}
+      />
 
-      {showConjuntoModal && (
-        <ConjuntoModal
-          isOpen={showConjuntoModal}
-          onClose={() => {
-            setShowConjuntoModal(false);
-            setEditingConjunto(null);
-          }}
-          onSave={handleConjuntoSave}
-          conjunto={editingConjunto}
-          products={products}
-        />
-      )}
+      <ProductInfoModal
+        isOpen={showProductInfoModal}
+        onClose={() => setShowProductInfoModal(false)}
+        product={selectedProduct}
+        affiliates={affiliates}
+      />
 
-      {showAfiliadoEstoqueModal && (
-        <AfiliadoEstoqueModal
-          isOpen={showAfiliadoEstoqueModal}
-          onClose={() => setShowAfiliadoEstoqueModal(false)}
-          product={selectedProduct}
-          affiliates={affiliates}
-          onUpdateStock={handleUpdateAffiliateStock}
-        />
-      )}
+      <KitModal
+        isOpen={showKitModal}
+        onClose={() => {
+          setShowKitModal(false);
+          setSelectedKit(null);
+        }}
+        onSave={selectedKit ? updateKit : createKit}
+        products={products}
+        kit={selectedKit}
+      />
 
-      {showProductInfoModal && (
-        <ProductInfoModal
-          isOpen={showProductInfoModal}
-          onClose={() => setShowProductInfoModal(false)}
-          product={selectedProduct}
-          affiliates={affiliates}
-        />
-      )}
+      <KitDetalhesModal
+        isOpen={showKitDetalhesModal}
+        onClose={() => setShowKitDetalhesModal(false)}
+        kit={selectedKit}
+        products={products}
+      />
 
-      {showConfirmModal && confirmAction && (
-        <ConfirmModal
-          isOpen={showConfirmModal}
-          onClose={() => setShowConfirmModal(false)}
-          onConfirm={() => {
-            confirmAction.onConfirm();
-            setConfirmAction(null);
-            setShowConfirmModal(false);
-          }}
-          title={confirmAction.title}
-          message={confirmAction.message}
-          variant={confirmAction.title.includes('Exclusão') ? 'destructive' : 'default'}
-        />
-      )}
+      <ConjuntoModal
+        isOpen={showConjuntoModal}
+        onClose={() => {
+          setShowConjuntoModal(false);
+          setSelectedConjunto(null);
+        }}
+        onSave={selectedConjunto ? updateConjunto : createConjunto}
+        products={products}
+        conjunto={selectedConjunto}
+      />
+
+      <ConjuntoDetalhesModal
+        isOpen={showConjuntoDetalhesModal}
+        onClose={() => setShowConjuntoDetalhesModal(false)}
+        conjunto={selectedConjunto}
+        products={products}
+      />
+
+      <AfiliadoEstoqueModal
+        isOpen={showAfiliadoEstoqueModal}
+        onClose={() => setShowAfiliadoEstoqueModal(false)}
+        products={products}
+        kits={kits}
+        conjuntos={conjuntos}
+        affiliates={affiliates}
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title={`Excluir ${itemToDelete?.type === 'product' ? 'Produto' : itemToDelete?.type === 'kit' ? 'Kit' : 'Conjunto'}`}
+        message={`Tem certeza que deseja excluir ${itemToDelete?.item?.nome}? Esta ação não pode ser desfeita.`}
+      />
     </div>
   );
 };

@@ -112,7 +112,6 @@ const createVenda = async (req, res) => {
     await client.query('BEGIN');
     
     const {
-      id,
       afiliado_id,
       tipo_venda,
       valor_total,
@@ -121,14 +120,28 @@ const createVenda = async (req, res) => {
       produtos
     } = req.body;
 
-    console.log('💰 Criando venda:', { id, tipo_venda, valor_total, produtos_count: produtos?.length });
-
-    // Usar ID fornecido ou gerar um novo
-    const vendaId = id || `VENDA-${Date.now()}`;
+    console.log('💰 Criando venda:', { tipo_venda, valor_total, produtos_count: produtos?.length });
 
     if (!produtos || produtos.length === 0) {
       return res.status(400).json({ error: 'Produtos são obrigatórios' });
     }
+
+    // Gerar ID sequencial no padrão VENDA00001
+    const lastVendaResult = await client.query(`
+      SELECT id FROM vendas 
+      WHERE id LIKE 'VENDA%' 
+      ORDER BY id DESC 
+      LIMIT 1
+    `);
+
+    let nextNumber = 1;
+    if (lastVendaResult.rows.length > 0) {
+      const lastId = lastVendaResult.rows[0].id;
+      const lastNumber = parseInt(lastId.replace('VENDA', ''));
+      nextNumber = lastNumber + 1;
+    }
+
+    const vendaId = `VENDA${nextNumber.toString().padStart(5, '0')}`;
 
     // Inserir venda (usando campos corretos do schema)
     const vendaResult = await client.query(`

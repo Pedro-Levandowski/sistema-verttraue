@@ -210,9 +210,9 @@ const deleteKit = async (req, res) => {
     const { id } = req.params;
     console.log('🎁 Deletando kit:', id);
 
-    // Verificar se kit está em vendas
+    // Verificar se kit está em vendas (usando nome correto da tabela)
     const vendasCheck = await client.query(
-      'SELECT COUNT(*) FROM venda_produtos WHERE kit_id = $1',
+      'SELECT COUNT(*) FROM venda_itens WHERE kit_id = $1',
       [id]
     );
 
