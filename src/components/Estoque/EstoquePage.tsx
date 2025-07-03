@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Gift, Layers } from 'lucide-react';
+import { Package, Gift, Layers, Edit, Trash2 } from 'lucide-react';
 import Header from '../Layout/Header';
 import ProdutoModal from './ProdutoModal';
 import KitModal from './KitModal';

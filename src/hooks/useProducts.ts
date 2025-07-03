@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { productsAPI } from '../services/api';
@@ -57,7 +56,7 @@ export const useProducts = () => {
     }
   };
 
-  const createProduct = async (productData: Omit<Product, 'id'>) => {
+  const createProduct = async (productData: Omit<Product, 'id' | 'fornecedor' | 'afiliado_estoque' | 'fotos'> & { fornecedor_id?: string }) => {
     console.log('➕ [useProducts] Criando produto:', productData);
     try {
       setLoading(true);
@@ -65,7 +64,7 @@ export const useProducts = () => {
       
       // Preparar dados para envio ao backend
       const backendData = {
-        id: productData.id || `PROD${Date.now()}`,
+        id: `PROD${Date.now()}`,
         nome: productData.nome,
         descricao: productData.descricao || '',
         estoque_fisico: Number(productData.estoque_fisico) || 0,
@@ -105,7 +104,7 @@ export const useProducts = () => {
     }
   };
 
-  const updateProduct = async (id: string, productData: Partial<Product>) => {
+  const updateProduct = async (id: string, productData: Partial<Product> & { fornecedor_id?: string }) => {
     console.log('🔄 [useProducts] Atualizando produto:', id, productData);
     try {
       setLoading(true);
