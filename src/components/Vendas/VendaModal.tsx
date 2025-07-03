@@ -1,12 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Product, Conjunto, Kit, Affiliate } from '../../types';
+import { Product, Conjunto, Kit, Affiliate, Sale } from '../../types';
 
 interface VendaModalProps {
   isOpen: boolean;
@@ -16,6 +15,7 @@ interface VendaModalProps {
   conjuntos: Conjunto[];
   kits: Kit[];
   affiliates: Affiliate[];
+  initialSale?: Sale | null;
 }
 
 const VendaModal: React.FC<VendaModalProps> = ({ 
@@ -25,7 +25,8 @@ const VendaModal: React.FC<VendaModalProps> = ({
   products, 
   conjuntos, 
   kits,
-  affiliates 
+  affiliates,
+  initialSale 
 }) => {
   const [formData, setFormData] = useState({
     tipo_venda: 'online' as 'online' | 'fisica',
@@ -39,6 +40,33 @@ const VendaModal: React.FC<VendaModalProps> = ({
   const [selectedType, setSelectedType] = useState<'produto' | 'conjunto' | 'kit'>('produto');
   const [selectedId, setSelectedId] = useState('none');
   const [quantidade, setQuantidade] = useState('');
+
+  // Load initial sale data when editing
+  useEffect(() => {
+    if (initialSale && isOpen) {
+      setFormData({
+        tipo_venda: (initialSale.tipo as 'online' | 'fisica') || 'online',
+        afiliado_id: initialSale.afiliado_id || 'none',
+        data_venda: initialSale.data_venda ? new Date(initialSale.data_venda).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        observacoes: initialSale.observacoes || '',
+        produtos: initialSale.produtos?.map(item => ({
+          type: item.item_tipo as 'produto' | 'conjunto' | 'kit',
+          id: item.produto_id || item.kit_id || item.conjunto_id || '',
+          quantidade: item.quantidade,
+          preco: item.preco_unitario
+        })) || []
+      });
+    } else if (!initialSale && isOpen) {
+      // Reset form for new sale
+      setFormData({
+        tipo_venda: 'online',
+        afiliado_id: 'none',
+        data_venda: new Date().toISOString().split('T')[0],
+        observacoes: '',
+        produtos: []
+      });
+    }
+  }, [initialSale, isOpen]);
 
   const getNextSaleId = () => {
     const timestamp = Date.now();
@@ -103,7 +131,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
     
     try {
       const saleData = {
-        id: getNextSaleId(),
+        id: initialSale?.id || getNextSaleId(),
         afiliado_id: formData.afiliado_id === 'none' ? null : formData.afiliado_id,
         tipo_venda: formData.tipo_venda,
         valor_total: calculateTotal(),
@@ -178,7 +206,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar Nova Venda</DialogTitle>
+          <DialogTitle>{initialSale ? 'Editar Venda' : 'Registrar Nova Venda'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -328,7 +356,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
               disabled={formData.produtos.length === 0 || loading}
             >
-              {loading ? 'Registrando...' : 'Registrar Venda'}
+              {loading ? (initialSale ? 'Atualizando...' : 'Registrando...') : (initialSale ? 'Atualizar Venda' : 'Registrar Venda')}
             </Button>
           </div>
         </form>
