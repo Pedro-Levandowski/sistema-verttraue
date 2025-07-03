@@ -15,24 +15,30 @@ const getAllVendas = async (req, res) => {
       ORDER BY v.data_venda DESC
     `);
 
-    // Buscar produtos de cada venda
-    const vendas = [];
+    // Buscar produtos de cada venda (usando nome correto da tabela)
+    const vendas =[];
     for (const venda of result.rows) {
       const produtosResult = await pool.query(`
         SELECT 
-          vp.*,
+          vi.*,
           p.nome as produto_nome,
           c.nome as conjunto_nome,
           k.nome as kit_nome
-        FROM venda_produtos vp
-        LEFT JOIN produtos p ON vp.produto_id = p.id
-        LEFT JOIN conjuntos c ON vp.conjunto_id = c.id
-        LEFT JOIN kits k ON vp.kit_id = k.id
-        WHERE vp.venda_id = $1
+        FROM venda_itens vi
+        LEFT JOIN produtos p ON vi.produto_id = p.id
+        LEFT JOIN conjuntos c ON vi.conjunto_id = c.id
+        LEFT JOIN kits k ON vi.kit_id = k.id
+        WHERE vi.venda_id = $1
       `, [venda.id]);
 
       vendas.push({
-        ...venda,
+        id: venda.id,
+        data_venda: venda.data_venda,
+        afiliado_id: venda.afiliado_id,
+        afiliado_nome: venda.afiliado_nome,
+        valor_total: parseFloat(venda.total) || 0,
+        tipo_venda: venda.tipo || 'online',
+        observacoes: venda.observacoes || '',
         produtos: produtosResult.rows
       });
     }
@@ -65,22 +71,28 @@ const getVendaById = async (req, res) => {
       return res.status(404).json({ error: 'Venda não encontrada' });
     }
 
-    // Buscar produtos da venda
+    // Buscar produtos da venda (usando nome correto da tabela)
     const produtosResult = await pool.query(`
       SELECT 
-        vp.*,
+        vi.*,
         p.nome as produto_nome,
         c.nome as conjunto_nome,
         k.nome as kit_nome
-      FROM venda_produtos vp
-      LEFT JOIN produtos p ON vp.produto_id = p.id
-      LEFT JOIN conjuntos c ON vp.conjunto_id = c.id
-      LEFT JOIN kits k ON vp.kit_id = k.id
-      WHERE vp.venda_id = $1
+      FROM venda_itens vi
+      LEFT JOIN produtos p ON vi.produto_id = p.id
+      LEFT JOIN conjuntos c ON vi.conjunto_id = c.id
+      LEFT JOIN kits k ON vi.kit_id = k.id
+      WHERE vi.venda_id = $1
     `, [id]);
 
     const venda = {
-      ...result.rows[0],
+      id: result.rows[0].id,
+      data_venda: result.rows[0].data_venda,
+      afiliado_id: result.rows[0].afiliado_id,
+      afiliado_nome: result.rows[0].afiliado_nome,
+      valor_total: parseFloat(result.rows[0].total) || 0,
+      tipo_venda: result.rows[0].tipo || 'online',
+      observacoes: result.rows[0].observacoes || '',
       produtos: produtosResult.rows
     };
 
@@ -118,24 +130,22 @@ const createVenda = async (req, res) => {
       return res.status(400).json({ error: 'Produtos são obrigatórios' });
     }
 
-    // Inserir venda
+    // Inserir venda (usando campos corretos do schema)
     const vendaResult = await client.query(`
       INSERT INTO vendas (
-        id, afiliado_id, tipo_venda, valor_total, 
-        observacoes, data_venda
+        id, afiliado_id, tipo, total, data_venda
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `, [
       vendaId,
       afiliado_id,
       tipo_venda || 'online',
       valor_total || 0,
-      observacoes || '',
       data_venda || new Date().toISOString().split('T')[0]
     ]);
 
-    // Inserir produtos da venda
+    // Inserir produtos da venda (usando nome correto da tabela)
     for (const produto of produtos) {
       const {
         produto_id,
@@ -147,7 +157,7 @@ const createVenda = async (req, res) => {
       } = produto;
 
       await client.query(`
-        INSERT INTO venda_produtos (
+        INSERT INTO venda_itens (
           venda_id, produto_id, conjunto_id, kit_id,
           quantidade, preco_unitario, subtotal
         )
@@ -242,8 +252,8 @@ const deleteVenda = async (req, res) => {
     const { id } = req.params;
     console.log('💰 Deletando venda:', id);
 
-    // Deletar produtos da venda primeiro
-    await client.query('DELETE FROM venda_produtos WHERE venda_id = $1', [id]);
+    // Deletar produtos da venda primeiro (usando nome correto da tabela)
+    await client.query('DELETE FROM venda_itens WHERE venda_id = $1', [id]);
 
     // Deletar venda
     const result = await client.query('DELETE FROM vendas WHERE id = $1 RETURNING *', [id]);

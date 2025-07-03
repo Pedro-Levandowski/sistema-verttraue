@@ -279,9 +279,9 @@ const deleteProduto = async (req, res) => {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
 
-    // Verificar se produto existe em vendas
+    // Verificar se produto existe em vendas (usando nome correto da tabela)
     const vendasCheck = await client.query(
-      'SELECT COUNT(*) FROM venda_produtos WHERE produto_id = $1',
+      'SELECT COUNT(*) FROM venda_itens WHERE produto_id = $1',
       [id]
     );
 
