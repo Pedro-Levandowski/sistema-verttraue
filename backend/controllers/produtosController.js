@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Listar todos os produtos com informações de fornecedor e estoque de afiliados
@@ -264,12 +263,24 @@ const updateProduto = async (req, res) => {
 
 // Deletar produto
 const deleteProduto = async (req, res) => {
+  const client = await pool.connect();
+  
   try {
+    await client.query('BEGIN');
+    
     const { id } = req.params;
     console.log('📦 Deletando produto:', id);
 
+    // Verificar se produto existe
+    const produtoExists = await client.query('SELECT id FROM produtos WHERE id = $1', [id]);
+    
+    if (produtoExists.rows.length === 0) {
+      console.log('❌ Produto não encontrado para deleção:', id);
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
     // Verificar se produto existe em vendas
-    const vendasCheck = await pool.query(
+    const vendasCheck = await client.query(
       'SELECT COUNT(*) FROM venda_produtos WHERE produto_id = $1',
       [id]
     );
@@ -280,25 +291,49 @@ const deleteProduto = async (req, res) => {
       });
     }
 
-    // Deletar estoque de afiliados primeiro
-    await pool.query('DELETE FROM afiliado_estoque WHERE produto_id = $1', [id]);
+    // Verificar se produto existe em kits
+    const kitsCheck = await client.query(
+      'SELECT COUNT(*) FROM kit_produtos WHERE produto_id = $1',
+      [id]
+    );
 
-    // Deletar fotos primeiro
-    await pool.query('DELETE FROM produto_fotos WHERE produto_id = $1', [id]);
-
-    // Deletar produto
-    const result = await pool.query('DELETE FROM produtos WHERE id = $1 RETURNING *', [id]);
-
-    if (result.rows.length === 0) {
-      console.log('❌ Produto não encontrado para deleção:', id);
-      return res.status(404).json({ error: 'Produto não encontrado' });
+    if (parseInt(kitsCheck.rows[0].count) > 0) {
+      return res.status(400).json({ 
+        error: 'Não é possível deletar produto vinculado a kits' 
+      });
     }
 
+    // Verificar se produto existe em conjuntos
+    const conjuntosCheck = await client.query(
+      'SELECT COUNT(*) FROM conjunto_produtos WHERE produto_id = $1',
+      [id]
+    );
+
+    if (parseInt(conjuntosCheck.rows[0].count) > 0) {
+      return res.status(400).json({ 
+        error: 'Não é possível deletar produto vinculado a conjuntos' 
+      });
+    }
+
+    // Deletar estoque de afiliados primeiro
+    await client.query('DELETE FROM afiliado_estoque WHERE produto_id = $1', [id]);
+
+    // Deletar fotos do produto
+    await client.query('DELETE FROM produto_fotos WHERE produto_id = $1', [id]);
+
+    // Deletar produto
+    const result = await client.query('DELETE FROM produtos WHERE id = $1 RETURNING *', [id]);
+
+    await client.query('COMMIT');
+    
     console.log('✅ Produto deletado:', result.rows[0].nome);
     res.json({ message: 'Produto deletado com sucesso' });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('❌ Erro ao deletar produto:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: error.message || 'Erro interno do servidor' });
+  } finally {
+    client.release();
   }
 };
 

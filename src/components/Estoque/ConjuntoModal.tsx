@@ -35,17 +35,17 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
   const [quantidade, setQuantidade] = useState('');
 
   useEffect(() => {
-    if (conjunto) {
+    if (conjunto && isOpen) {
       setFormData({
         id: conjunto.id,
         nome: conjunto.nome,
         descricao: conjunto.descricao,
         preco: conjunto.preco.toString(),
-        produtos: conjunto.produtos
+        produtos: Array.isArray(conjunto.produtos) ? conjunto.produtos : []
       });
-    } else {
+    } else if (!conjunto && isOpen) {
       setFormData({
-        id: '',
+        id: `CONJ${Date.now()}`,
         nome: '',
         descricao: '',
         preco: '',
@@ -80,7 +80,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
   };
 
   const calculateEstoque = () => {
-    if (formData.produtos.length === 0) return 0;
+    if (formData.produtos.length === 0 || !Array.isArray(products) || products.length === 0) return 0;
     
     return Math.min(...formData.produtos.map(cp => {
       const produto = products.find(p => p.id === cp.produto_id);
@@ -91,16 +91,31 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.nome.trim()) {
+      alert('Por favor, preencha o nome do conjunto.');
+      return;
+    }
+
+    if (formData.produtos.length === 0) {
+      alert('Por favor, adicione pelo menos um produto ao conjunto.');
+      return;
+    }
+
     const conjuntoData = {
       id: formData.id || `CONJ${Date.now()}`,
       nome: formData.nome,
       descricao: formData.descricao,
-      preco: parseFloat(formData.preco),
+      preco: parseFloat(formData.preco) || 0,
       produtos: formData.produtos,
       estoque_disponivel: calculateEstoque()
     };
+    
     onSave(conjuntoData);
   };
+
+  // Verificar se produtos estão disponíveis
+  const availableProducts = Array.isArray(products) ? products : [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -118,6 +133,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
               onChange={(e) => setFormData({ ...formData, id: e.target.value })}
               placeholder="Ex: CONJ001"
               required
+              disabled={!!conjunto}
             />
           </div>
 
@@ -127,6 +143,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
               id="nome"
               value={formData.nome}
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              placeholder="Nome do conjunto"
               required
             />
           </div>
@@ -137,6 +154,8 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
               id="descricao"
               value={formData.descricao}
               onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+              placeholder="Descrição do conjunto"
+              rows={3}
             />
           </div>
 
@@ -146,8 +165,10 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
               id="preco"
               type="number"
               step="0.01"
+              min="0"
               value={formData.preco}
               onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+              placeholder="0.00"
               required
             />
           </div>
@@ -155,38 +176,44 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
           <div className="border rounded p-4">
             <h3 className="font-semibold mb-3">Produtos do Conjunto</h3>
             
-            <div className="flex gap-2 mb-4">
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                className="flex-1 rounded border p-2"
-              >
-                <option value="">Selecione um produto</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.nome} (ID: {product.id})
-                  </option>
-                ))}
-              </select>
-              <Input
-                type="number"
-                placeholder="Qtd"
-                value={quantidade}
-                onChange={(e) => setQuantidade(e.target.value)}
-                className="w-20"
-                min="1"
-              />
-              <Button type="button" onClick={addProduct} size="sm">
-                Adicionar
-              </Button>
-            </div>
+            {availableProducts.length > 0 ? (
+              <div className="flex gap-2 mb-4">
+                <select
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="flex-1 rounded border border-gray-300 p-2"
+                >
+                  <option value="">Selecione um produto</option>
+                  {availableProducts.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.nome} (ID: {product.id})
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  placeholder="Qtd"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  className="w-20"
+                  min="1"
+                />
+                <Button type="button" onClick={addProduct} size="sm">
+                  Adicionar
+                </Button>
+              </div>
+            ) : (
+              <div className="text-gray-500 text-sm mb-4">
+                Nenhum produto disponível. Crie produtos primeiro.
+              </div>
+            )}
 
             <div className="space-y-2">
               {formData.produtos.map((cp) => {
-                const produto = products.find(p => p.id === cp.produto_id);
+                const produto = availableProducts.find(p => p.id === cp.produto_id);
                 return (
                   <div key={cp.produto_id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    <span>{produto?.nome} (x{cp.quantidade})</span>
+                    <span>{produto?.nome || 'Produto não encontrado'} (x{cp.quantidade})</span>
                     <Button
                       type="button"
                       variant="destructive"
@@ -218,7 +245,7 @@ const ConjuntoModal: React.FC<ConjuntoModalProps> = ({
             <Button 
               type="submit" 
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-              disabled={formData.produtos.length === 0}
+              disabled={formData.produtos.length === 0 || !formData.nome.trim()}
             >
               {conjunto ? 'Salvar' : 'Criar Conjunto'}
             </Button>

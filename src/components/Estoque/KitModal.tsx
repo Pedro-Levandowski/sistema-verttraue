@@ -35,17 +35,17 @@ const KitModal: React.FC<KitModalProps> = ({
   const [quantidade, setQuantidade] = useState('');
 
   useEffect(() => {
-    if (kit) {
+    if (kit && isOpen) {
       setFormData({
         id: kit.id,
         nome: kit.nome,
         descricao: kit.descricao,
         preco: kit.preco.toString(),
-        produtos: kit.produtos
+        produtos: Array.isArray(kit.produtos) ? kit.produtos : []
       });
-    } else {
+    } else if (!kit && isOpen) {
       setFormData({
-        id: '',
+        id: `KIT${Date.now()}`,
         nome: '',
         descricao: '',
         preco: '',
@@ -80,7 +80,7 @@ const KitModal: React.FC<KitModalProps> = ({
   };
 
   const calculateEstoque = () => {
-    if (formData.produtos.length === 0) return 0;
+    if (formData.produtos.length === 0 || !Array.isArray(products) || products.length === 0) return 0;
     
     return Math.min(...formData.produtos.map(kp => {
       const produto = products.find(p => p.id === kp.produto_id);
@@ -91,16 +91,31 @@ const KitModal: React.FC<KitModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.nome.trim()) {
+      alert('Por favor, preencha o nome do kit.');
+      return;
+    }
+
+    if (formData.produtos.length === 0) {
+      alert('Por favor, adicione pelo menos um produto ao kit.');
+      return;
+    }
+
     const kitData = {
       id: formData.id || `KIT${Date.now()}`,
       nome: formData.nome,
       descricao: formData.descricao,
-      preco: parseFloat(formData.preco),
+      preco: parseFloat(formData.preco) || 0,
       produtos: formData.produtos,
       estoque_disponivel: calculateEstoque()
     };
+    
     onSave(kitData);
   };
+
+  // Verificar se produtos estão disponíveis
+  const availableProducts = Array.isArray(products) ? products : [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -118,6 +133,7 @@ const KitModal: React.FC<KitModalProps> = ({
               onChange={(e) => setFormData({ ...formData, id: e.target.value })}
               placeholder="Ex: KIT001"
               required
+              disabled={!!kit}
             />
           </div>
 
@@ -127,6 +143,7 @@ const KitModal: React.FC<KitModalProps> = ({
               id="nome"
               value={formData.nome}
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              placeholder="Nome do kit"
               required
             />
           </div>
@@ -137,6 +154,8 @@ const KitModal: React.FC<KitModalProps> = ({
               id="descricao"
               value={formData.descricao}
               onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+              placeholder="Descrição do kit"
+              rows={3}
             />
           </div>
 
@@ -146,8 +165,10 @@ const KitModal: React.FC<KitModalProps> = ({
               id="preco"
               type="number"
               step="0.01"
+              min="0"
               value={formData.preco}
               onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+              placeholder="0.00"
               required
             />
           </div>
@@ -155,38 +176,44 @@ const KitModal: React.FC<KitModalProps> = ({
           <div className="border rounded p-4">
             <h3 className="font-semibold mb-3">Produtos do Kit</h3>
             
-            <div className="flex gap-2 mb-4">
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                className="flex-1 rounded border p-2"
-              >
-                <option value="">Selecione um produto</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.nome} (ID: {product.id})
-                  </option>
-                ))}
-              </select>
-              <Input
-                type="number"
-                placeholder="Qtd"
-                value={quantidade}
-                onChange={(e) => setQuantidade(e.target.value)}
-                className="w-20"
-                min="1"
-              />
-              <Button type="button" onClick={addProduct} size="sm">
-                Adicionar
-              </Button>
-            </div>
+            {availableProducts.length > 0 ? (
+              <div className="flex gap-2 mb-4">
+                <select
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="flex-1 rounded border border-gray-300 p-2"
+                >
+                  <option value="">Selecione um produto</option>
+                  {availableProducts.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.nome} (ID: {product.id})
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  placeholder="Qtd"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  className="w-20"
+                  min="1"
+                />
+                <Button type="button" onClick={addProduct} size="sm">
+                  Adicionar
+                </Button>
+              </div>
+            ) : (
+              <div className="text-gray-500 text-sm mb-4">
+                Nenhum produto disponível. Crie produtos primeiro.
+              </div>
+            )}
 
             <div className="space-y-2">
               {formData.produtos.map((kp) => {
-                const produto = products.find(p => p.id === kp.produto_id);
+                const produto = availableProducts.find(p => p.id === kp.produto_id);
                 return (
                   <div key={kp.produto_id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    <span>{produto?.nome} (x{kp.quantidade})</span>
+                    <span>{produto?.nome || 'Produto não encontrado'} (x{kp.quantidade})</span>
                     <Button
                       type="button"
                       variant="destructive"
@@ -218,7 +245,7 @@ const KitModal: React.FC<KitModalProps> = ({
             <Button 
               type="submit" 
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-              disabled={formData.produtos.length === 0}
+              disabled={formData.produtos.length === 0 || !formData.nome.trim()}
             >
               {kit ? 'Salvar' : 'Criar Kit'}
             </Button>
