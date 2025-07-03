@@ -18,6 +18,7 @@ interface ProdutoModalProps {
 
 const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, product, suppliers }) => {
   const [formData, setFormData] = useState({
+    id: '',
     nome: '',
     descricao: '',
     estoque_fisico: 0,
@@ -28,9 +29,11 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
   });
 
   useEffect(() => {
-    if (product) {
+    console.log('🔧 [ProdutoModal] Atualizando formulário:', { product, isOpen });
+    if (product && isOpen) {
       setFormData({
-        nome: product.nome,
+        id: product.id || '',
+        nome: product.nome || '',
         descricao: product.descricao || '',
         estoque_fisico: product.estoque_fisico || 0,
         estoque_site: product.estoque_site || 0,
@@ -38,8 +41,9 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         preco_compra: product.preco_compra || 0,
         fornecedor_id: product.fornecedor?.id || ''
       });
-    } else {
+    } else if (!product && isOpen) {
       setFormData({
+        id: `PROD${Date.now()}`,
         nome: '',
         descricao: '',
         estoque_fisico: 0,
@@ -54,7 +58,9 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome) {
+    console.log('💾 [ProdutoModal] Salvando produto:', formData);
+    
+    if (!formData.nome.trim()) {
       alert('Por favor, preencha o nome do produto.');
       return;
     }
@@ -62,12 +68,33 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
     // Confirmação antes de salvar
     const action = product ? 'atualizar' : 'criar';
     if (confirm(`Tem certeza que deseja ${action} este produto?`)) {
-      onSave(formData);
+      try {
+        // Preparar dados no formato esperado
+        const productData = {
+          ...formData,
+          estoque_fisico: Number(formData.estoque_fisico) || 0,
+          estoque_site: Number(formData.estoque_site) || 0,
+          preco: Number(formData.preco) || 0,
+          preco_compra: Number(formData.preco_compra) || 0,
+          fornecedor_id: formData.fornecedor_id || null
+        };
+        
+        console.log('📤 [ProdutoModal] Enviando dados:', productData);
+        onSave(productData);
+      } catch (error) {
+        console.error('❌ [ProdutoModal] Erro ao salvar:', error);
+        alert('Erro ao salvar produto. Tente novamente.');
+      }
     }
   };
 
+  const handleClose = () => {
+    console.log('🚪 [ProdutoModal] Fechando modal');
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -76,6 +103,19 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!product && (
+            <div>
+              <Label htmlFor="id">ID do Produto *</Label>
+              <Input
+                id="id"
+                value={formData.id}
+                onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                placeholder="Ex: PROD001"
+                required
+              />
+            </div>
+          )}
+
           <div>
             <Label htmlFor="nome">Nome do Produto *</Label>
             <Input
@@ -111,7 +151,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
                 <SelectItem value="">Nenhum fornecedor</SelectItem>
                 {suppliers.map(supplier => (
                   <SelectItem key={supplier.id} value={supplier.id}>
-                    {supplier.nome}
+                    {supplier.nome} - {supplier.cidade}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,7 +213,7 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">

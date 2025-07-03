@@ -1,17 +1,17 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Gift, Layers, Eye, Trash2, Edit } from 'lucide-react';
+import { Package, Gift, Layers } from 'lucide-react';
 import Header from '../Layout/Header';
 import ProdutoModal from './ProdutoModal';
 import KitModal from './KitModal';
 import ConjuntoModal from './ConjuntoModal';
 import AfiliadoEstoqueModal from './AfiliadoEstoqueModal';
 import ProductInfoModal from './ProductInfoModal';
+import ProductActions from './ProductActions';
 import ConfirmModal from '../Layout/ConfirmModal';
 import { useProducts } from '../../hooks/useProducts';
 import { useSuppliers } from '../../hooks/useSuppliers';
@@ -29,6 +29,13 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   console.log('🚀 [EstoquePage] Inicializando componente...');
 
   // Hooks com proteção contra undefined
+  const productsHook = useProducts();
+  const suppliersHook = useSuppliers();
+  const affiliatesHook = useAffiliates();
+  const kitsHook = useKits();
+  const conjuntosHook = useConjuntos();
+
+  // Extrair valores dos hooks com fallbacks seguros
   const {
     products = [],
     loading: productsLoading = false,
@@ -36,23 +43,17 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     createProduct,
     updateProduct,
     deleteProduct
-  } = useProducts() || {};
+  } = productsHook || {};
 
-  const {
-    suppliers = []
-  } = useSuppliers() || {};
-
-  const {
-    affiliates = []
-  } = useAffiliates() || {};
-
+  const { suppliers = [] } = suppliersHook || {};
+  const { affiliates = [] } = affiliatesHook || {};
   const {
     kits = [],
     loading: kitsLoading = false,
     createKit,
     updateKit,
     deleteKit
-  } = useKits() || {};
+  } = kitsHook || {};
 
   const {
     conjuntos = [],
@@ -60,7 +61,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     createConjunto,
     updateConjunto,
     deleteConjunto
-  } = useConjuntos() || {};
+  } = conjuntosHook || {};
 
   // Estados locais
   const [activeTab, setActiveTab] = useState('produtos');
@@ -106,53 +107,42 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     conjunto?.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handlers com verificação de função
+  // Handlers de produto
+  const handleViewDetails = (product: Product) => {
+    console.log('👁️ [EstoquePage] Visualizando detalhes do produto:', product?.id);
+    setSelectedProduct(product);
+    setShowProductInfoModal(true);
+  };
+
   const handleEdit = (product: Product) => {
-    try {
-      console.log('🔧 [EstoquePage] Editando produto:', product?.id);
-      setEditingProduct(product);
-      setShowModal(true);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao editar produto:', error);
-    }
+    console.log('🔧 [EstoquePage] Editando produto:', product?.id);
+    setEditingProduct(product);
+    setShowModal(true);
   };
 
   const handleDelete = (product: Product) => {
-    try {
-      console.log('🗑️ [EstoquePage] Solicitando exclusão do produto:', product?.id);
-      setConfirmAction({
-        title: 'Confirmar Exclusão',
-        message: `Tem certeza que deseja excluir o produto "${product?.nome || 'N/A'}"? Esta ação não pode ser desfeita.`,
-        onConfirm: async () => {
-          try {
-            if (deleteProduct) {
-              await deleteProduct(product.id);
-              console.log('✅ [EstoquePage] Produto excluído com sucesso');
-            }
-          } catch (error) {
-            console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
+    console.log('🗑️ [EstoquePage] Solicitando exclusão do produto:', product?.id);
+    setConfirmAction({
+      title: 'Confirmar Exclusão',
+      message: `Tem certeza que deseja excluir o produto "${product?.nome || 'N/A'}"? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        try {
+          if (deleteProduct) {
+            await deleteProduct(product.id);
+            console.log('✅ [EstoquePage] Produto excluído com sucesso');
           }
+        } catch (error) {
+          console.error('❌ [EstoquePage] Erro ao excluir produto:', error);
+          alert('Erro ao excluir produto. Tente novamente.');
         }
-      });
-      setShowConfirmModal(true);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao preparar exclusão:', error);
-    }
-  };
-
-  const handleViewDetails = (product: Product) => {
-    try {
-      console.log('👁️ [EstoquePage] Visualizando detalhes do produto:', product?.id);
-      setSelectedProduct(product);
-      setShowProductInfoModal(true);
-    } catch (error) {
-      console.error('❌ [EstoquePage] Erro ao visualizar detalhes:', error);
-    }
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   const handleSave = async (productData: any) => {
+    console.log('💾 [EstoquePage] Salvando produto:', productData);
     try {
-      console.log('💾 [EstoquePage] Salvando produto:', productData);
       if (editingProduct && updateProduct) {
         await updateProduct(editingProduct.id, productData);
         console.log('✅ [EstoquePage] Produto atualizado com sucesso');
@@ -164,9 +154,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       setShowModal(false);
     } catch (error) {
       console.error('❌ [EstoquePage] Erro ao salvar produto:', error);
+      alert('Erro ao salvar produto. Verifique os dados e tente novamente.');
     }
   };
 
+  // Handlers para kits
   const handleKitSave = async (kitData: any) => {
     try {
       console.log('💾 [EstoquePage] Salvando kit:', kitData);
@@ -182,6 +174,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     }
   };
 
+  // Handlers para conjuntos
   const handleConjuntoSave = async (conjuntoData: any) => {
     try {
       console.log('💾 [EstoquePage] Salvando conjunto:', conjuntoData);
@@ -278,6 +271,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             <Button
               onClick={() => {
                 console.log('➕ [EstoquePage] Abrindo modal de novo produto');
+                setEditingProduct(null);
                 setShowModal(true);
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -288,6 +282,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             <Button
               onClick={() => {
                 console.log('➕ [EstoquePage] Abrindo modal de novo kit');
+                setEditingKit(null);
                 setShowKitModal(true);
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -298,6 +293,7 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
             <Button
               onClick={() => {
                 console.log('➕ [EstoquePage] Abrindo modal de novo conjunto');
+                setEditingConjunto(null);
                 setShowConjuntoModal(true);
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -347,32 +343,12 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                             R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="p-3">
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleViewDetails(product)}
-                                className="hover:bg-blue-50 hover:border-blue-300 text-xs"
-                              >
-                                <Eye className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEdit(product)}
-                                className="hover:bg-blue-600 hover:text-white text-xs"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDelete(product)}
-                                className="hover:bg-red-500 hover:text-white text-xs"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            <ProductActions
+                              product={product}
+                              onView={handleViewDetails}
+                              onEdit={handleEdit}
+                              onDelete={handleDelete}
+                            />
                           </td>
                         </tr>
                       ))}
