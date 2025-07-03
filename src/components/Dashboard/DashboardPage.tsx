@@ -8,6 +8,8 @@ import { useProducts } from '../../hooks/useProducts';
 import { useSuppliers } from '../../hooks/useSuppliers';
 import { useAffiliates } from '../../hooks/useAffiliates';
 import { useSales } from '../../hooks/useSales';
+import { useKits } from '../../hooks/useKits';
+import { useConjuntos } from '../../hooks/useConjuntos';
 
 interface DashboardPageProps {
   onNavigate: (page: 'dashboard' | 'estoque' | 'fornecedores' | 'afiliados' | 'vendas' | 'debug') => void;
@@ -19,12 +21,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { suppliers } = useSuppliers();
   const { affiliates } = useAffiliates();
   const { sales } = useSales();
+  const { kits } = useKits();
+  const { conjuntos } = useConjuntos();
 
   // Calcular estatísticas
-  const totalProducts = products.length;
+  const totalProducts = products.length + kits.length + conjuntos.length;
   const totalSuppliers = suppliers.length;
   const activeAffiliates = affiliates.filter(a => a.ativo).length;
-  const totalSales = sales.reduce((total, sale) => total + sale.total, 0);
+  
+  // Corrigir cálculo das vendas totais
+  const totalSales = sales.reduce((total, sale) => {
+    const saleValue = Number(sale.valor_total || sale.total || 0);
+    return total + (isNaN(saleValue) ? 0 : saleValue);
+  }, 0);
 
   // Alterar para estoque baixo < 3 unidades
   const lowStockProducts = products.filter(p => p.estoque_site < 3).length;
@@ -55,7 +64,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total de Produtos</p>
+                <p className="text-gray-600 text-sm">Total Produtos/Kits/Conjuntos</p>
                 <p className="text-2xl font-bold text-vertttraue-primary">{totalProducts}</p>
               </div>
               <Package className="w-8 h-8 text-blue-500" />

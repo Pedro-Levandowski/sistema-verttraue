@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { useKits } from '../../hooks/useKits';
 import { useConjuntos } from '../../hooks/useConjuntos';
 import { Product, Kit, Conjunto } from '../../types';
 import { Eye, Edit, Trash2, Users } from 'lucide-react';
+import { estoqueAPI } from '../../services/api';
 
 interface EstoquePageProps {
   onBack: () => void;
@@ -85,6 +87,11 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowDeleteModal(true);
   };
 
+  const handleAssignProductToAffiliate = (product: Product) => {
+    setSelectedProduct(product);
+    setShowAfiliadoEstoqueModal(true);
+  };
+
   // Handlers para kits
   const handleShowKitDetails = (kit: Kit) => {
     setSelectedKit(kit);
@@ -101,6 +108,24 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
     setShowDeleteModal(true);
   };
 
+  const handleAssignKitToAffiliate = (kit: Kit) => {
+    // Converter kit para formato produto para reutilizar modal
+    const kitAsProduct: Product = {
+      id: kit.id,
+      nome: kit.nome,
+      descricao: kit.descricao || '',
+      estoque_fisico: 0,
+      estoque_site: 1, // Considera que kit sempre tem "estoque"
+      preco: kit.preco,
+      preco_compra: 0,
+      fornecedor: null,
+      afiliado_estoque: [],
+      fotos: []
+    };
+    setSelectedProduct(kitAsProduct);
+    setShowAfiliadoEstoqueModal(true);
+  };
+
   // Handlers para conjuntos
   const handleShowConjuntoDetails = (conjunto: Conjunto) => {
     setSelectedConjunto(conjunto);
@@ -115,6 +140,24 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
   const handleDeleteConjunto = (conjunto: Conjunto) => {
     setItemToDelete({ type: 'conjunto', item: conjunto });
     setShowDeleteModal(true);
+  };
+
+  const handleAssignConjuntoToAffiliate = (conjunto: Conjunto) => {
+    // Converter conjunto para formato produto para reutilizar modal
+    const conjuntoAsProduct: Product = {
+      id: conjunto.id,
+      nome: conjunto.nome,
+      descricao: conjunto.descricao || '',
+      estoque_fisico: 0,
+      estoque_site: 1, // Considera que conjunto sempre tem "estoque"
+      preco: conjunto.preco,
+      preco_compra: 0,
+      fornecedor: null,
+      afiliado_estoque: [],
+      fotos: []
+    };
+    setSelectedProduct(conjuntoAsProduct);
+    setShowAfiliadoEstoqueModal(true);
   };
 
   // Confirmar exclusão
@@ -191,8 +234,19 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
   // Handler para estoque de afiliado
   const handleUpdateAffiliateStock = async (affiliateId: string, quantity: number) => {
-    // Implementar lógica para atualizar estoque do afiliado
-    console.log('Atualizando estoque do afiliado:', affiliateId, quantity);
+    if (selectedProduct) {
+      try {
+        await estoqueAPI.updateAffiliateStock({
+          produto_id: selectedProduct.id,
+          afiliado_id: affiliateId,
+          quantidade: quantity
+        });
+        console.log('✅ Estoque de afiliado atualizado com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao atualizar estoque de afiliado:', error);
+        throw error;
+      }
+    }
   };
 
   return (
@@ -200,18 +254,6 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
       <Header
         title="Gestão de Estoque"
         onBack={onBack}
-        actions={
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setShowAfiliadoEstoqueModal(true)}
-              variant="outline"
-              className="hover:bg-vertttraue-primary hover:text-white"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Estoque Afiliados
-            </Button>
-          </div>
-        }
       />
 
       <div className="container mx-auto p-6">
@@ -285,13 +327,16 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1">
-                              <Button size="sm" variant="outline" onClick={() => handleShowProductDetails(product)}>
+                              <Button size="sm" variant="outline" onClick={() => handleShowProductDetails(product)} title="Ver detalhes">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
+                              <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)} title="Editar">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleDeleteProduct(product)}>
+                              <Button size="sm" variant="outline" onClick={() => handleAssignProductToAffiliate(product)} title="Vincular a afiliado">
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteProduct(product)} title="Excluir">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -346,13 +391,16 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1">
-                              <Button size="sm" variant="outline" onClick={() => handleShowKitDetails(kit)}>
+                              <Button size="sm" variant="outline" onClick={() => handleShowKitDetails(kit)} title="Ver detalhes">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleEditKit(kit)}>
+                              <Button size="sm" variant="outline" onClick={() => handleEditKit(kit)} title="Editar">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleDeleteKit(kit)}>
+                              <Button size="sm" variant="outline" onClick={() => handleAssignKitToAffiliate(kit)} title="Vincular a afiliado">
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteKit(kit)} title="Excluir">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -407,13 +455,16 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1">
-                              <Button size="sm" variant="outline" onClick={() => handleShowConjuntoDetails(conjunto)}>
+                              <Button size="sm" variant="outline" onClick={() => handleShowConjuntoDetails(conjunto)} title="Ver detalhes">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleEditConjunto(conjunto)}>
+                              <Button size="sm" variant="outline" onClick={() => handleEditConjunto(conjunto)} title="Editar">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleDeleteConjunto(conjunto)}>
+                              <Button size="sm" variant="outline" onClick={() => handleAssignConjuntoToAffiliate(conjunto)} title="Vincular a afiliado">
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleDeleteConjunto(conjunto)} title="Excluir">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -499,7 +550,10 @@ const EstoquePage: React.FC<EstoquePageProps> = ({ onBack }) => {
 
       <AfiliadoEstoqueModal
         isOpen={showAfiliadoEstoqueModal}
-        onClose={() => setShowAfiliadoEstoqueModal(false)}
+        onClose={() => {
+          setShowAfiliadoEstoqueModal(false);
+          setSelectedProduct(null);
+        }}
         onUpdateStock={handleUpdateAffiliateStock}
         product={selectedProduct}
         affiliates={affiliates}

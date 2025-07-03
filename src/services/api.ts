@@ -1,4 +1,3 @@
-
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Função para fazer requisições autenticadas
@@ -207,15 +206,46 @@ export const kitsAPI = {
   }),
 };
 
-// Estoque API
+// API de Estoque de Afiliados
 export const estoqueAPI = {
-  updateAfiliadoEstoque: (produto_id: string, afiliado_id: string, quantidade: number) => 
-    makeRequest('/estoque/afiliado', {
+  updateAffiliateStock: async (data: {
+    produto_id: string;
+    afiliado_id: string;
+    quantidade: number;
+  }) => {
+    console.log('📡 [estoqueAPI] Enviando atualização de estoque:', data);
+    const response = await fetch(`${API_BASE_URL}/estoque/afiliado`, {
       method: 'PUT',
-      body: JSON.stringify({ produto_id, afiliado_id, quantidade }),
-    }),
-  getEstoquePorAfiliado: (afiliado_id: string) => 
-    makeRequest(`/estoque/afiliado/${afiliado_id}`),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro de rede' }));
+      throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  getAffiliateStock: async (afiliadoId: string) => {
+    console.log('📡 [estoqueAPI] Buscando estoque do afiliado:', afiliadoId);
+    const response = await fetch(`${API_BASE_URL}/estoque/afiliado/${afiliadoId}`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro de rede' }));
+      throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+    }
+
+    return response.json();
+  }
 };
 
 // Debug API
