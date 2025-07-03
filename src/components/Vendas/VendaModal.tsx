@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Product, Conjunto, Kit, Affiliate, Sale } from '../../types';
+import { estoqueAPI } from '../../services/api';
 
 interface VendaModalProps {
   isOpen: boolean;
@@ -36,10 +38,12 @@ const VendaModal: React.FC<VendaModalProps> = ({
     produtos: [] as { type: 'produto' | 'conjunto' | 'kit'; id: string; quantidade: number; preco: number }[]
   });
   const [loading, setLoading] = useState(false);
+  const [affiliateProducts, setAffiliateProducts] = useState<any[]>([]);
 
   const [selectedType, setSelectedType] = useState<'produto' | 'conjunto' | 'kit'>('produto');
   const [selectedId, setSelectedId] = useState('none');
   const [quantidade, setQuantidade] = useState('');
+  const [productSearch, setProductSearch] = useState('');
 
   // Load initial sale data when editing
   useEffect(() => {
@@ -67,6 +71,25 @@ const VendaModal: React.FC<VendaModalProps> = ({
       });
     }
   }, [initialSale, isOpen]);
+
+  // Buscar produtos do afiliado quando venda física e afiliado selecionado
+  useEffect(() => {
+    const fetchAffiliateProducts = async () => {
+      if (formData.tipo_venda === 'fisica' && formData.afiliado_id !== 'none') {
+        try {
+          const data = await estoqueAPI.getAffiliateProducts(formData.afiliado_id);
+          setAffiliateProducts(data);
+        } catch (error) {
+          console.error('Erro ao buscar produtos do afiliado:', error);
+          setAffiliateProducts([]);
+        }
+      } else {
+        setAffiliateProducts([]);
+      }
+    };
+
+    fetchAffiliateProducts();
+  }, [formData.tipo_venda, formData.afiliado_id]);
 
   const getNextSaleId = () => {
     const timestamp = Date.now();
@@ -110,6 +133,39 @@ const VendaModal: React.FC<VendaModalProps> = ({
 
     setSelectedId('none');
     setQuantidade('');
+    setProductSearch('');
+  };
+
+  const addProductById = () => {
+    if (!productSearch.trim() || !quantidade) return;
+    
+    const product = products.find(p => p.id.toLowerCase() === productSearch.toLowerCase());
+    if (product) {
+      const existingIndex = formData.produtos.findIndex(
+        item => item.type === 'produto' && item.id === product.id
+      );
+
+      if (existingIndex >= 0) {
+        const newItems = [...formData.produtos];
+        newItems[existingIndex].quantidade += parseInt(quantidade);
+        setFormData({ ...formData, produtos: newItems });
+      } else {
+        setFormData({
+          ...formData,
+          produtos: [...formData.produtos, {
+            type: 'produto',
+            id: product.id,
+            quantidade: parseInt(quantidade),
+            preco: product.preco
+          }]
+        });
+      }
+      
+      setProductSearch('');
+      setQuantidade('');
+    } else {
+      alert('Produto não encontrado!');
+    }
   };
 
   const removeItem = (type: string, id: string) => {
@@ -177,13 +233,42 @@ const VendaModal: React.FC<VendaModalProps> = ({
     }
   };
 
+  const getAvailableProducts = () => {
+    if (formData.tipo_venda === 'fisica' && formData.afiliado_id !== 'none') {
+      // Para vendas físicas, mostrar apenas produtos do afiliado
+      return affiliateProducts.filter(p => 
+        selectedType === 'produto' && p.estoque_afiliado > 0
+      );
+    } else {
+      // Para vendas online, mostrar todos os produtos
+      if (selectedType === 'produto') {
+        return products.filter(p => p.estoque_site > 0);
+      } else if (selectedType === 'conjunto') {
+        return conjuntos;
+      } else {
+        return kits;
+      }
+    }
+  };
+
   const renderOptions = () => {
+    const availableItems = getAvailableProducts();
+    
     if (selectedType === 'produto') {
-      return products.map(product => (
-        <SelectItem key={product.id} value={product.id}>
-          {product.nome} - R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-        </SelectItem>
-      ));
+      if (formData.tipo_venda === 'fisica' && formData.afiliado_id !== 'none') {
+        return affiliateProducts.map(product => (
+          <SelectItem key={product.id} value={product.id}>
+            {product.nome} - R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} 
+            (Estoque: {product.estoque_afiliado})
+          </SelectItem>
+        ));
+      } else {
+        return products.filter(p => p.estoque_site > 0).map(product => (
+          <SelectItem key={product.id} value={product.id}>
+            {product.nome} - R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </SelectItem>
+        ));
+      }
     } else if (selectedType === 'conjunto') {
       return conjuntos.map(conjunto => (
         <SelectItem key={conjunto.id} value={conjunto.id}>
@@ -238,7 +323,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
             </div>
 
             <div>
-              <Label>Afiliado (opcional)</Label>
+              <Label>Afiliado {formData.tipo_venda === 'fisica' && '(obrigatório)'}</Label>
               <Select
                 value={formData.afiliado_id}
                 onValueChange={(value) => setFormData({ ...formData, afiliado_id: value })}
@@ -247,7 +332,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
                   <SelectValue placeholder="Selecione um afiliado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhum afiliado</SelectItem>
+                  {formData.tipo_venda === 'online' && <SelectItem value="none">Nenhum afiliado</SelectItem>}
                   {activeAffiliates.map(affiliate => (
                     <SelectItem key={affiliate.id} value={affiliate.id}>
                       {affiliate.nome_completo} ({affiliate.id})
@@ -270,6 +355,29 @@ const VendaModal: React.FC<VendaModalProps> = ({
           <div className="border rounded p-4">
             <h3 className="font-semibold mb-3">Itens da Venda</h3>
             
+            {/* Busca por ID do Produto */}
+            <div className="mb-4 p-3 bg-blue-50 rounded">
+              <Label className="text-sm font-medium mb-2 block">Buscar Produto por ID</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  placeholder="Digite o ID do produto"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  placeholder="Qtd"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  min="1"
+                />
+                <Button type="button" onClick={addProductById} size="sm">
+                  Adicionar por ID
+                </Button>
+              </div>
+            </div>
+            
+            {/* Seleção por Lista */}
             <div className="grid grid-cols-4 gap-2 mb-4">
               <Select
                 value={selectedType}
@@ -283,8 +391,8 @@ const VendaModal: React.FC<VendaModalProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="produto">Produto</SelectItem>
-                  <SelectItem value="conjunto">Conjunto</SelectItem>
-                  <SelectItem value="kit">Kit</SelectItem>
+                  {formData.tipo_venda === 'online' && <SelectItem value="conjunto">Conjunto</SelectItem>}
+                  {formData.tipo_venda === 'online' && <SelectItem value="kit">Kit</SelectItem>}
                 </SelectContent>
               </Select>
               
@@ -354,7 +462,7 @@ const VendaModal: React.FC<VendaModalProps> = ({
             <Button 
               type="submit" 
               className="flex-1 bg-vertttraue-primary hover:bg-vertttraue-primary/80"
-              disabled={formData.produtos.length === 0 || loading}
+              disabled={formData.produtos.length === 0 || loading || (formData.tipo_venda === 'fisica' && formData.afiliado_id === 'none')}
             >
               {loading ? (initialSale ? 'Atualizando...' : 'Registrando...') : (initialSale ? 'Atualizar Venda' : 'Registrar Venda')}
             </Button>

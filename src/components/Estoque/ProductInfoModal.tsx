@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -8,14 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, X, Edit, Save } from 'lucide-react';
-import { Product, Affiliate } from '../../types';
+import { Product, Kit, Conjunto, Affiliate } from '../../types';
 
 interface ProductInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product: Product | null;
+  product: Product | Kit | Conjunto | null;
   affiliates: Affiliate[];
-  onUpdateProduct?: (product: Product) => void;
+  onUpdateProduct?: (product: Product | Kit | Conjunto) => void;
 }
 
 const ProductInfoModal: React.FC<ProductInfoModalProps> = ({ 
@@ -26,7 +27,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
   onUpdateProduct
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProduct, setEditedProduct] = useState<Product | null>(null);
+  const [editedProduct, setEditedProduct] = useState<Product | Kit | Conjunto | null>(null);
   const [newPhotos, setNewPhotos] = useState<string[]>([]);
 
   if (!product) return null;
@@ -40,7 +41,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
     if (editedProduct && onUpdateProduct) {
       const updatedProduct = {
         ...editedProduct,
-        fotos: [...(editedProduct.fotos || []), ...newPhotos]
+        fotos: [...((editedProduct as any).fotos || []), ...newPhotos]
       };
       onUpdateProduct(updatedProduct);
       setNewPhotos([]);
@@ -75,8 +76,8 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
     } else if (editedProduct) {
       setEditedProduct({
         ...editedProduct,
-        fotos: editedProduct.fotos?.filter((_, i) => i !== index) || []
-      });
+        fotos: ((editedProduct as any).fotos?.filter((_, i: number) => i !== index) || [])
+      } as any);
     }
   };
 
@@ -87,12 +88,20 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
   const currentProduct = isEditing ? editedProduct : product;
   if (!currentProduct) return null;
 
+  // Verificar se é produto, kit ou conjunto
+  const isProduct = 'estoque_fisico' in currentProduct;
+  const isKit = 'produtos' in currentProduct && !isProduct;
+  const isConjunto = !isProduct && !isKit;
+
+  const itemName = currentProduct.nome || 'Item sem nome';
+  const itemType = isProduct ? 'Produto' : isKit ? 'Kit' : 'Conjunto';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="text-2xl font-bold text-vertttraue-primary">
-            {isEditing ? 'Editar Produto' : 'Informações do Produto'}
+            {isEditing ? `Editar ${itemType}` : `Informações do ${itemType}`}
           </DialogTitle>
           <div className="flex gap-2">
             {!isEditing ? (
@@ -116,11 +125,10 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Informações</TabsTrigger>
-            <TabsTrigger value="stock">Estoque</TabsTrigger>
+            {isProduct && <TabsTrigger value="stock">Estoque</TabsTrigger>}
             <TabsTrigger value="photos">Fotos</TabsTrigger>
-            <TabsTrigger value="affiliates">Afiliados</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4">
@@ -131,7 +139,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="id">ID do Produto</Label>
+                    <Label htmlFor="id">ID do {itemType}</Label>
                     <Input
                       id="id"
                       value={currentProduct.id}
@@ -139,19 +147,21 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                       className="font-mono bg-gray-50"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="fornecedor">Fornecedor</Label>
-                    <Input
-                      id="fornecedor"
-                      value={currentProduct.fornecedor.nome}
-                      disabled={!isEditing}
-                      className={!isEditing ? "bg-gray-50" : ""}
-                    />
-                  </div>
+                  {isProduct && (currentProduct as Product).fornecedor && (
+                    <div>
+                      <Label htmlFor="fornecedor">Fornecedor</Label>
+                      <Input
+                        id="fornecedor"
+                        value={(currentProduct as Product).fornecedor.nome}
+                        disabled={!isEditing}
+                        className={!isEditing ? "bg-gray-50" : ""}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <Label htmlFor="nome">Nome do Produto</Label>
+                  <Label htmlFor="nome">Nome do {itemType}</Label>
                   {isEditing ? (
                     <Input
                       id="nome"
@@ -162,7 +172,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                       })}
                     />
                   ) : (
-                    <Input value={currentProduct.nome} disabled className="bg-gray-50" />
+                    <Input value={itemName} disabled className="bg-gray-50" />
                   )}
                 </div>
 
@@ -171,7 +181,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                   {isEditing ? (
                     <Textarea
                       id="descricao"
-                      value={currentProduct.descricao}
+                      value={currentProduct.descricao || ''}
                       onChange={(e) => setEditedProduct({
                         ...currentProduct,
                         descricao: e.target.value
@@ -179,7 +189,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                       rows={3}
                     />
                   ) : (
-                    <Textarea value={currentProduct.descricao} disabled className="bg-gray-50" rows={3} />
+                    <Textarea value={currentProduct.descricao || ''} disabled className="bg-gray-50" rows={3} />
                   )}
                 </div>
 
@@ -205,90 +215,94 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                       />
                     )}
                   </div>
-                  <div>
-                    <Label htmlFor="preco_compra">Preço de Compra</Label>
-                    {isEditing ? (
-                      <Input
-                        id="preco_compra"
-                        type="number"
-                        step="0.01"
-                        value={currentProduct.preco_compra}
-                        onChange={(e) => setEditedProduct({
-                          ...currentProduct,
-                          preco_compra: parseFloat(e.target.value) || 0
-                        })}
-                      />
-                    ) : (
-                      <Input 
-                        value={`R$ ${currentProduct.preco_compra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                        disabled 
-                        className="bg-gray-50" 
-                      />
-                    )}
-                  </div>
+                  {isProduct && (
+                    <div>
+                      <Label htmlFor="preco_compra">Preço de Compra</Label>
+                      {isEditing ? (
+                        <Input
+                          id="preco_compra"
+                          type="number"
+                          step="0.01"
+                          value={(currentProduct as Product).preco_compra}
+                          onChange={(e) => setEditedProduct({
+                            ...currentProduct,
+                            preco_compra: parseFloat(e.target.value) || 0
+                          } as Product)}
+                        />
+                      ) : (
+                        <Input 
+                          value={`R$ ${(currentProduct as Product).preco_compra?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`}
+                          disabled 
+                          className="bg-gray-50" 
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="stock" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-vertttraue-primary">Controle de Estoque</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {currentProduct.estoque_fisico + currentProduct.estoque_site}
+          {isProduct && (
+            <TabsContent value="stock" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-vertttraue-primary">Controle de Estoque</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {(currentProduct as Product).estoque_fisico + (currentProduct as Product).estoque_site}
+                      </div>
+                      <div className="text-sm text-gray-600">Estoque Total</div>
                     </div>
-                    <div className="text-sm text-gray-600">Estoque Total</div>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={currentProduct.estoque_fisico}
-                          onChange={(e) => setEditedProduct({
-                            ...currentProduct,
-                            estoque_fisico: parseInt(e.target.value) || 0
-                          })}
-                          className="text-center border-0 bg-transparent text-2xl font-bold"
-                        />
-                      ) : (
-                        currentProduct.estoque_fisico
-                      )}
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={(currentProduct as Product).estoque_fisico}
+                            onChange={(e) => setEditedProduct({
+                              ...currentProduct,
+                              estoque_fisico: parseInt(e.target.value) || 0
+                            } as Product)}
+                            className="text-center border-0 bg-transparent text-2xl font-bold"
+                          />
+                        ) : (
+                          (currentProduct as Product).estoque_fisico
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">Estoque Físico</div>
                     </div>
-                    <div className="text-sm text-gray-600">Estoque Físico</div>
-                  </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={currentProduct.estoque_site}
-                          onChange={(e) => setEditedProduct({
-                            ...currentProduct,
-                            estoque_site: parseInt(e.target.value) || 0
-                          })}
-                          className="text-center border-0 bg-transparent text-2xl font-bold"
-                        />
-                      ) : (
-                        currentProduct.estoque_site
-                      )}
+                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={(currentProduct as Product).estoque_site}
+                            onChange={(e) => setEditedProduct({
+                              ...currentProduct,
+                              estoque_site: parseInt(e.target.value) || 0
+                            } as Product)}
+                            className="text-center border-0 bg-transparent text-2xl font-bold"
+                          />
+                        ) : (
+                          (currentProduct as Product).estoque_site
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">Estoque Site</div>
                     </div>
-                    <div className="text-sm text-gray-600">Estoque Site</div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="photos" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-vertttraue-primary">Fotos do Produto</CardTitle>
+                <CardTitle className="text-vertttraue-primary">Fotos do {itemType}</CardTitle>
               </CardHeader>
               <CardContent>
                 {isEditing && (
@@ -317,7 +331,7 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {/* Fotos existentes */}
-                  {currentProduct.fotos?.map((foto, index) => (
+                  {((currentProduct as any).fotos || []).map((foto: string, index: number) => (
                     <div key={index} className="relative group">
                       <img 
                         src={foto} 
@@ -357,57 +371,12 @@ const ProductInfoModal: React.FC<ProductInfoModalProps> = ({
                     </div>
                   ))}
 
-                  {(!currentProduct.fotos || currentProduct.fotos.length === 0) && newPhotos.length === 0 && (
+                  {(!(currentProduct as any).fotos || (currentProduct as any).fotos.length === 0) && newPhotos.length === 0 && (
                     <div className="col-span-full text-center py-8 text-gray-500">
                       Nenhuma foto adicionada ainda
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="affiliates" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-vertttraue-primary">Estoque com Afiliados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentProduct.afiliado_estoque && currentProduct.afiliado_estoque.length > 0 ? (
-                  <div className="space-y-3">
-                    {currentProduct.afiliado_estoque.map((ae, index) => {
-                      const affiliate = getAffiliateInfo(ae.afiliado_id);
-                      return (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">
-                              {affiliate ? affiliate.nome_completo : `Afiliado ${ae.afiliado_id}`}
-                            </div>
-                            {affiliate && (
-                              <div className="text-sm text-gray-600">
-                                {affiliate.email} • Tel: {affiliate.telefone}
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <Badge className="bg-vertttraue-primary">
-                              {ae.quantidade} unidades
-                            </Badge>
-                            {affiliate && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Comissão: {affiliate.comissao}%
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Nenhum estoque com afiliados
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>

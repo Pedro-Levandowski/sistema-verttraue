@@ -245,6 +245,22 @@ export const estoqueAPI = {
     }
 
     return response.json();
+  },
+
+  getAffiliateProducts: async (afiliadoId: string) => {
+    console.log('📡 [estoqueAPI] Buscando produtos do afiliado:', afiliadoId);
+    const response = await fetch(`${API_BASE_URL}/estoque/afiliado/${afiliadoId}/produtos`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro de rede' }));
+      throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+    }
+
+    return response.json();
   }
 };
 

@@ -185,13 +185,46 @@ const createVenda = async (req, res) => {
         subtotal || 0
       ]);
 
-      // Atualizar estoque se for produto individual
+      // Atualizar estoque conforme tipo de venda
       if (produto_id) {
-        await client.query(`
-          UPDATE produtos 
-          SET estoque_site = GREATEST(0, estoque_site - $1)
-          WHERE id = $2
-        `, [quantidade || 1, produto_id]);
+        if (tipo_venda === 'fisica' && afiliado_id) {
+          // Venda física: diminuir do estoque do afiliado
+          const afiliadoEstoque = await client.query(
+            'SELECT quantidade FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
+            [produto_id, afiliado_id]
+          );
+
+          if (afiliadoEstoque.rows.length > 0) {
+            const novaQuantidade = afiliadoEstoque.rows[0].quantidade - (quantidade || 1);
+            
+            if (novaQuantidade <= 0) {
+              // Remover produto do estoque do afiliado
+              await client.query(
+                'DELETE FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
+                [produto_id, afiliado_id]
+              );
+              
+              // Diminuir do estoque físico
+              await client.query(
+                'UPDATE produtos SET estoque_fisico = GREATEST(0, estoque_fisico - $1) WHERE id = $2',
+                [quantidade || 1, produto_id]
+              );
+            } else {
+              // Atualizar quantidade no estoque do afiliado
+              await client.query(
+                'UPDATE afiliado_estoque SET quantidade = $1 WHERE produto_id = $2 AND afiliado_id = $3',
+                [novaQuantidade, produto_id, afiliado_id]
+              );
+            }
+          }
+        } else {
+          // Venda online: diminuir do estoque site
+          await client.query(`
+            UPDATE produtos 
+            SET estoque_site = GREATEST(0, estoque_site - $1)
+            WHERE id = $2
+          `, [quantidade || 1, produto_id]);
+        }
       }
     }
 
