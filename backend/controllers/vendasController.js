@@ -15,8 +15,8 @@ const getAllVendas = async (req, res) => {
       ORDER BY v.data_venda DESC
     `);
 
-    // Buscar produtos de cada venda (usando nome correto da tabela)
-    const vendas =[];
+    // Buscar produtos de cada venda
+    const vendas = [];
     for (const venda of result.rows) {
       const produtosResult = await pool.query(`
         SELECT 
@@ -37,7 +37,7 @@ const getAllVendas = async (req, res) => {
         afiliado_id: venda.afiliado_id,
         afiliado_nome: venda.afiliado_nome,
         valor_total: parseFloat(venda.total) || 0,
-        tipo_venda: venda.tipo || 'online',
+        tipo: venda.tipo || 'online',
         observacoes: venda.observacoes || '',
         produtos: produtosResult.rows
       });
@@ -143,7 +143,7 @@ const createVenda = async (req, res) => {
 
     const vendaId = `VENDA${nextNumber.toString().padStart(5, '0')}`;
 
-    // Inserir venda (usando campos corretos do schema)
+    // Inserir venda
     const vendaResult = await client.query(`
       INSERT INTO vendas (
         id, afiliado_id, tipo, total, data_venda
@@ -158,7 +158,7 @@ const createVenda = async (req, res) => {
       data_venda || new Date().toISOString().split('T')[0]
     ]);
 
-    // Inserir produtos da venda (usando nome correto da tabela)
+    // Inserir produtos da venda e atualizar estoques
     for (const produto of produtos) {
       const {
         produto_id,
@@ -185,45 +185,29 @@ const createVenda = async (req, res) => {
         subtotal || 0
       ]);
 
-      // Atualizar estoque conforme tipo de venda
+      // Processar redução de estoque
       if (produto_id) {
-        if (tipo_venda === 'fisica' && afiliado_id) {
-          // Venda física: diminuir do estoque do afiliado
-          const afiliadoEstoque = await client.query(
-            'SELECT quantidade FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
-            [produto_id, afiliado_id]
-          );
+        // Venda de produto individual
+        await processarEstoqueProduto(client, produto_id, quantidade || 1, tipo_venda, afiliado_id);
+      } else if (conjunto_id) {
+        // Venda de conjunto - reduzir estoque de todos os produtos do conjunto
+        const conjuntoProdutos = await client.query(`
+          SELECT produto_id, quantidade FROM conjunto_produtos WHERE conjunto_id = $1
+        `, [conjunto_id]);
 
-          if (afiliadoEstoque.rows.length > 0) {
-            const novaQuantidade = afiliadoEstoque.rows[0].quantidade - (quantidade || 1);
-            
-            if (novaQuantidade <= 0) {
-              // Remover produto do estoque do afiliado
-              await client.query(
-                'DELETE FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
-                [produto_id, afiliado_id]
-              );
-              
-              // Diminuir do estoque físico
-              await client.query(
-                'UPDATE produtos SET estoque_fisico = GREATEST(0, estoque_fisico - $1) WHERE id = $2',
-                [quantidade || 1, produto_id]
-              );
-            } else {
-              // Atualizar quantidade no estoque do afiliado
-              await client.query(
-                'UPDATE afiliado_estoque SET quantidade = $1 WHERE produto_id = $2 AND afiliado_id = $3',
-                [novaQuantidade, produto_id, afiliado_id]
-              );
-            }
-          }
-        } else {
-          // Venda online: diminuir do estoque site
-          await client.query(`
-            UPDATE produtos 
-            SET estoque_site = GREATEST(0, estoque_site - $1)
-            WHERE id = $2
-          `, [quantidade || 1, produto_id]);
+        for (const conjuntoProduto of conjuntoProdutos.rows) {
+          const quantidadeTotal = conjuntoProduto.quantidade * (quantidade || 1);
+          await processarEstoqueProduto(client, conjuntoProduto.produto_id, quantidadeTotal, tipo_venda, afiliado_id);
+        }
+      } else if (kit_id) {
+        // Venda de kit - reduzir estoque de todos os produtos do kit
+        const kitProdutos = await client.query(`
+          SELECT produto_id, quantidade FROM kit_produtos WHERE kit_id = $1
+        `, [kit_id]);
+
+        for (const kitProduto of kitProdutos.rows) {
+          const quantidadeTotal = kitProduto.quantidade * (quantidade || 1);
+          await processarEstoqueProduto(client, kitProduto.produto_id, quantidadeTotal, tipo_venda, afiliado_id);
         }
       }
     }
@@ -238,6 +222,48 @@ const createVenda = async (req, res) => {
     res.status(500).json({ error: error.message || 'Erro interno do servidor' });
   } finally {
     client.release();
+  }
+};
+
+// Função auxiliar para processar estoque de produtos
+const processarEstoqueProduto = async (client, produtoId, quantidade, tipoVenda, afiliadoId) => {
+  if (tipoVenda === 'fisica' && afiliadoId) {
+    // Venda física: diminuir do estoque do afiliado
+    const afiliadoEstoque = await client.query(
+      'SELECT quantidade FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
+      [produtoId, afiliadoId]
+    );
+
+    if (afiliadoEstoque.rows.length > 0) {
+      const novaQuantidade = afiliadoEstoque.rows[0].quantidade - quantidade;
+      
+      if (novaQuantidade <= 0) {
+        // Remover produto do estoque do afiliado
+        await client.query(
+          'DELETE FROM afiliado_estoque WHERE produto_id = $1 AND afiliado_id = $2',
+          [produtoId, afiliadoId]
+        );
+        
+        // Diminuir do estoque físico
+        await client.query(
+          'UPDATE produtos SET estoque_fisico = GREATEST(0, estoque_fisico - $1) WHERE id = $2',
+          [quantidade, produtoId]
+        );
+      } else {
+        // Atualizar quantidade no estoque do afiliado
+        await client.query(
+          'UPDATE afiliado_estoque SET quantidade = $1 WHERE produto_id = $2 AND afiliado_id = $3',
+          [novaQuantidade, produtoId, afiliadoId]
+        );
+      }
+    }
+  } else {
+    // Venda online: diminuir do estoque site
+    await client.query(`
+      UPDATE produtos 
+      SET estoque_site = GREATEST(0, estoque_site - $1)
+      WHERE id = $2
+    `, [quantidade, produtoId]);
   }
 };
 

@@ -74,21 +74,10 @@ const createConjunto = async (req, res) => {
     const { id, nome, descricao, preco, produtos } = req.body;
 
     console.log('🎯 Criando conjunto:', { id, nome, produtos: produtos?.length });
+    console.log('🎯 Produtos recebidos:', produtos);
 
-    if (!id || !nome || !produtos || produtos.length === 0) {
-      return res.status(400).json({ error: 'ID, nome e produtos são obrigatórios' });
-    }
-
-    // Validar se todos os produtos existem
-    for (const produto of produtos) {
-      const produtoExists = await client.query(
-        'SELECT id FROM produtos WHERE id = $1',
-        [produto.produto_id]
-      );
-      
-      if (produtoExists.rows.length === 0) {
-        throw new Error(`Produto ${produto.produto_id} não encontrado`);
-      }
+    if (!id || !nome) {
+      return res.status(400).json({ error: 'ID e nome são obrigatórios' });
     }
 
     // Inserir conjunto
@@ -98,18 +87,34 @@ const createConjunto = async (req, res) => {
       RETURNING *
     `, [id, nome, descricao || '', preco || 0]);
 
-    // Inserir produtos do conjunto
-    for (const produto of produtos) {
-      const { produto_id, quantidade } = produto;
-      
-      if (!quantidade || quantidade <= 0) {
-        throw new Error('Quantidade deve ser maior que zero');
-      }
+    // Inserir produtos do conjunto se fornecidos
+    if (produtos && Array.isArray(produtos) && produtos.length > 0) {
+      for (const produto of produtos) {
+        const { produto_id, quantidade } = produto;
+        
+        console.log('🎯 Adicionando produto ao conjunto:', { produto_id, quantidade });
+        
+        if (!produto_id || !quantidade || quantidade <= 0) {
+          console.warn('⚠️ Produto inválido ignorado:', produto);
+          continue;
+        }
 
-      await client.query(`
-        INSERT INTO conjunto_produtos (conjunto_id, produto_id, quantidade)
-        VALUES ($1, $2, $3)
-      `, [id, produto_id, quantidade]);
+        // Validar se produto existe
+        const produtoExists = await client.query(
+          'SELECT id FROM produtos WHERE id = $1',
+          [produto_id]
+        );
+        
+        if (produtoExists.rows.length === 0) {
+          console.warn('⚠️ Produto não encontrado:', produto_id);
+          continue;
+        }
+
+        await client.query(`
+          INSERT INTO conjunto_produtos (conjunto_id, produto_id, quantidade)
+          VALUES ($1, $2, $3)
+        `, [id, produto_id, quantidade]);
+      }
     }
 
     await client.query('COMMIT');
@@ -139,6 +144,7 @@ const updateConjunto = async (req, res) => {
     const { nome, descricao, preco, produtos } = req.body;
 
     console.log('🎯 Atualizando conjunto:', id);
+    console.log('🎯 Produtos para atualizar:', produtos);
 
     if (!nome) {
       return res.status(400).json({ error: 'Nome é obrigatório' });
@@ -158,7 +164,7 @@ const updateConjunto = async (req, res) => {
     }
 
     // Se produtos foram fornecidos, atualizar
-    if (produtos) {
+    if (produtos && Array.isArray(produtos)) {
       // Deletar produtos existentes
       await client.query('DELETE FROM conjunto_produtos WHERE conjunto_id = $1', [id]);
 
@@ -166,8 +172,11 @@ const updateConjunto = async (req, res) => {
       for (const produto of produtos) {
         const { produto_id, quantidade } = produto;
         
-        if (!quantidade || quantidade <= 0) {
-          throw new Error('Quantidade deve ser maior que zero');
+        console.log('🎯 Adicionando produto atualizado ao conjunto:', { produto_id, quantidade });
+        
+        if (!produto_id || !quantidade || quantidade <= 0) {
+          console.warn('⚠️ Produto inválido ignorado na atualização:', produto);
+          continue;
         }
 
         // Validar se produto existe
@@ -177,7 +186,8 @@ const updateConjunto = async (req, res) => {
         );
         
         if (produtoExists.rows.length === 0) {
-          throw new Error(`Produto ${produto_id} não encontrado`);
+          console.warn('⚠️ Produto não encontrado na atualização:', produto_id);
+          continue;
         }
 
         await client.query(`
