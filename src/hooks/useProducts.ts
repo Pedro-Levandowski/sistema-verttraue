@@ -56,15 +56,15 @@ export const useProducts = () => {
     }
   };
 
-  const createProduct = async (productData: Omit<Product, 'id' | 'fornecedor' | 'afiliado_estoque' | 'fotos'> & { fornecedor_id?: string }) => {
+  const createProduct = async (productData: Omit<Product, 'fornecedor' | 'afiliado_estoque' | 'fotos'> & { fornecedor_id?: string }) => {
     console.log('➕ [useProducts] Criando produto:', productData);
     try {
       setLoading(true);
       setError(null);
       
-      // Preparar dados para envio ao backend
+      // USAR O ID FORNECIDO PELO USUÁRIO - NÃO GERAR AUTOMATICAMENTE
       const backendData = {
-        id: `PROD${Date.now()}`,
+        id: productData.id, // Usar o ID exato fornecido pelo usuário
         nome: productData.nome,
         descricao: productData.descricao || '',
         estoque_fisico: Number(productData.estoque_fisico) || 0,
