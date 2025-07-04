@@ -88,7 +88,7 @@ cd ..
 sleep 3
 
 log_info "Testando health check..."
-if curl -s http://localhost:3001/health > /dev/null; then
+if curl -s http://188.245.246.153:3001/health > /dev/null; then
     log_info "✅ Backend iniciado com sucesso (PID: $BACKEND_PID)"
 else
     log_error "❌ Backend não respondeu ao health check"
