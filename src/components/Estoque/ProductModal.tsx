@@ -36,17 +36,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
     fornecedor_id: ''
   });
 
-  // Gerar ID automático se não for edição
-  const generateProductId = () => {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 10000);
-    return `PROD${timestamp}${random}`;
-  };
-
   useEffect(() => {
     if (isOpen) {
       if (initialProduct) {
-        // Editando produto existente
+        // Editando produto existente - manter ID original
         setFormData({
           id: initialProduct.id,
           nome: initialProduct.nome,
@@ -58,9 +51,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
           fornecedor_id: initialProduct.fornecedor?.id || ''
         });
       } else {
-        // Novo produto - gerar ID automático
+        // Novo produto - começar com ID vazio para usuário digitar
         setFormData({
-          id: generateProductId(),
+          id: '',
           nome: '',
           descricao: '',
           preco: 0,
@@ -98,8 +91,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
       setLoading(true);
       setError(null);
       
+      // Usar exatamente o ID que o usuário digitou, SEM gerar automaticamente
       await onSave({
-        ...formData,
+        id: formData.id.trim(), // Usar o ID exato que o usuário digitou
+        nome: formData.nome.trim(),
+        descricao: formData.descricao.trim(),
         preco: Number(formData.preco),
         preco_compra: Number(formData.preco_compra),
         estoque_site: Number(formData.estoque_site),
@@ -141,8 +137,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) => handleInputChange('id', e.target.value)}
                 placeholder="Ex: PROD123"
                 required
-                disabled={!!initialProduct} // Não permitir editar ID de produto existente
+                disabled={!!initialProduct} // Só desabilitar se estiver editando
               />
+              {!initialProduct && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Digite um ID único para o produto
+                </p>
+              )}
             </div>
 
             <div>

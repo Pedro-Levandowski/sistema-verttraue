@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,8 +41,9 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         fornecedor_id: product.fornecedor?.id || 'none'
       });
     } else if (!product && isOpen) {
+      // Novo produto - começar com ID vazio para usuário digitar
       setFormData({
-        id: `PROD${Date.now()}`,
+        id: '',
         nome: '',
         descricao: '',
         estoque_fisico: 0,
@@ -65,13 +65,20 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
       return;
     }
 
+    if (!formData.id.trim()) {
+      alert('Por favor, preencha o ID do produto.');
+      return;
+    }
+
     // Confirmação antes de salvar
     const action = product ? 'atualizar' : 'criar';
     if (confirm(`Tem certeza que deseja ${action} este produto?`)) {
       try {
-        // Preparar dados no formato esperado
+        // Usar exatamente o ID que o usuário digitou
         const productData = {
-          ...formData,
+          id: formData.id.trim(), // ID exato digitado pelo usuário
+          nome: formData.nome.trim(),
+          descricao: formData.descricao.trim(),
           estoque_fisico: Number(formData.estoque_fisico) || 0,
           estoque_site: Number(formData.estoque_site) || 0,
           preco: Number(formData.preco) || 0,
@@ -103,18 +110,22 @@ const ProdutoModal: React.FC<ProdutoModalProps> = ({ isOpen, onClose, onSave, pr
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!product && (
-            <div>
-              <Label htmlFor="id">ID do Produto *</Label>
-              <Input
-                id="id"
-                value={formData.id}
-                onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-                placeholder="Ex: PROD001"
-                required
-              />
-            </div>
-          )}
+          <div>
+            <Label htmlFor="id">ID do Produto *</Label>
+            <Input
+              id="id"
+              value={formData.id}
+              onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+              placeholder="Ex: PROD001"
+              required
+              disabled={!!product} // Só desabilitar se estiver editando
+            />
+            {!product && (
+              <p className="text-xs text-gray-500 mt-1">
+                Digite um ID único para o produto
+              </p>
+            )}
+          </div>
 
           <div>
             <Label htmlFor="nome">Nome do Produto *</Label>

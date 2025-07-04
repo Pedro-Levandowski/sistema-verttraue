@@ -1,3 +1,4 @@
+
 const pool = require('../config/database');
 
 // Listar todas as vendas
@@ -125,10 +126,10 @@ const createVenda = async (req, res) => {
       return res.status(400).json({ error: 'Produtos são obrigatórios' });
     }
 
-    // Gerar ID único com timestamp para evitar duplicatas
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const vendaId = `VENDA${timestamp}${random}`;
+    // Gerar ID mais curto para evitar erro de character varying(20)
+    const timestamp = Date.now().toString().slice(-8); // Últimos 8 dígitos
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    const vendaId = `V${timestamp}${random}`; // Ex: V12345678XX
 
     console.log('💰 ID da venda gerado:', vendaId);
 
