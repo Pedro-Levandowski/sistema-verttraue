@@ -250,7 +250,7 @@ const resetAdmin = async (req, res) => {
       console.log('👤 Admin não existe, criando...');
       await pool.query(
         'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3)',
-        ['admin@vertttraue.com', hashedPassword, 'Administrador']
+        ['admin@verttraue.com', hashedPassword, 'Administrador']
       );
     }
 
@@ -259,7 +259,7 @@ const resetAdmin = async (req, res) => {
       success: true,
       message: 'Usuário admin resetado com sucesso',
       admin: {
-        username: 'admin@vertttraue.com',
+        username: 'admin@verttraue.com',
         password: '123456'
       }
     });
