@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sua-chave-secreta-muito-segura';
 
-// Inicializar banco de dados - CORRIGIDO PARA USAR usuarios_admin
+// Inicializar banco de dados - CORRIGIDO PARA USAR usuarios
 const initDatabase = async (req, res) => {
   const client = await pool.connect();
   
@@ -14,103 +14,14 @@ const initDatabase = async (req, res) => {
     
     await client.query('BEGIN');
     
-    // Criar tabela usuarios_admin se não existir
-    const createUsuariosTable = `
-      CREATE TABLE IF NOT EXISTS usuarios_admin (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    
-    await client.query(createUsuariosTable);
-    console.log('✅ Tabela usuarios_admin criada/verificada');
-    
-    // Criar outras tabelas
-    const createTables = [
-      `CREATE TABLE IF NOT EXISTS fornecedores (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
-        contato VARCHAR(255),
-        email VARCHAR(255),
-        telefone VARCHAR(255),
-        endereco TEXT,
-        cidade VARCHAR(255),
-        uf VARCHAR(2),
-        cep VARCHAR(10),
-        ativo BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`,
-      
-      `CREATE TABLE IF NOT EXISTS produtos (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
-        codigo VARCHAR(100) UNIQUE,
-        descricao TEXT,
-        estoque_fisico INTEGER DEFAULT 0,
-        estoque_site INTEGER DEFAULT 0,
-        preco DECIMAL(10,2),
-        preco_compra DECIMAL(10,2),
-        fornecedor_id INTEGER REFERENCES fornecedores(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`,
-      
-      `CREATE TABLE IF NOT EXISTS afiliados (
-        id SERIAL PRIMARY KEY,
-        nome_completo VARCHAR(255) NOT NULL,
-        email VARCHAR(255),
-        telefone VARCHAR(255),
-        endereco TEXT,
-        cidade VARCHAR(255),
-        uf VARCHAR(2),
-        cep VARCHAR(10),
-        comissao DECIMAL(5,2) DEFAULT 0,
-        chave_pix VARCHAR(255),
-        tipo_chave_pix VARCHAR(20),
-        ativo BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`,
-      
-      `CREATE TABLE IF NOT EXISTS vendas (
-        id SERIAL PRIMARY KEY,
-        afiliado_id INTEGER REFERENCES afiliados(id),
-        data_venda DATE NOT NULL,
-        valor_total DECIMAL(10,2) NOT NULL,
-        observacoes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`,
-      
-      `CREATE TABLE IF NOT EXISTS venda_itens (
-        id SERIAL PRIMARY KEY,
-        venda_id INTEGER REFERENCES vendas(id) ON DELETE CASCADE,
-        produto_id INTEGER REFERENCES produtos(id),
-        kit_id INTEGER,
-        conjunto_id INTEGER,
-        quantidade INTEGER NOT NULL,
-        preco_unitario DECIMAL(10,2) NOT NULL,
-        item_nome VARCHAR(255),
-        item_tipo VARCHAR(20)
-      )`
-    ];
-    
-    for (const query of createTables) {
-      try {
-        await client.query(query);
-        console.log('✅ Tabela criada/verificada');
-      } catch (tableError) {
-        console.error('❌ Erro ao criar tabela:', tableError.message);
-      }
-    }
-    
-    // Verificar se usuário admin existe
-    const adminCheck = await client.query('SELECT id FROM usuarios_admin WHERE username = $1', ['admin@vertttraue.com']);
+    // Verificar se usuário admin existe na tabela usuarios
+    const adminCheck = await client.query('SELECT id FROM usuarios WHERE username = $1', ['admin@vertttraue.com']);
     
     if (adminCheck.rows.length === 0) {
       const hashedPassword = await bcrypt.hash('123456', 10);
       await client.query(
-        'INSERT INTO usuarios_admin (username, password_hash) VALUES ($1, $2)',
-        ['admin@vertttraue.com', hashedPassword]
+        'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3)',
+        ['admin@vertttraue.com', hashedPassword, 'Administrador']
       );
       console.log('✅ Usuário admin criado');
     } else {
@@ -119,12 +30,12 @@ const initDatabase = async (req, res) => {
     
     await client.query('COMMIT');
     
-    const userCount = await client.query('SELECT COUNT(*) FROM usuarios_admin');
+    const userCount = await client.query('SELECT COUNT(*) FROM usuarios');
     
     res.json({ 
       success: true,
       message: 'Banco de dados inicializado com sucesso',
-      tables: ['usuarios_admin', 'fornecedores', 'produtos', 'afiliados', 'vendas', 'venda_itens'],
+      tables: ['usuarios', 'fornecedores', 'produtos', 'afiliados', 'vendas', 'venda_itens'],
       userCount: parseInt(userCount.rows[0].count),
       adminCredentials: {
         username: 'admin@vertttraue.com',
@@ -148,7 +59,7 @@ const initDatabase = async (req, res) => {
   }
 };
 
-// Login - CORRIGIDO PARA USAR usuarios_admin
+// Login - CORRIGIDO PARA USAR usuarios
 const login = async (req, res) => {
   try {
     console.log('🔐 === INICIANDO LOGIN ===');
@@ -165,7 +76,7 @@ const login = async (req, res) => {
     }
 
     console.log('🔍 Buscando usuário:', username);
-    const result = await pool.query('SELECT * FROM usuarios_admin WHERE username = $1', [username]);
+    const result = await pool.query('SELECT * FROM usuarios WHERE username = $1', [username]);
     
     if (result.rows.length === 0) {
       console.log('❌ Usuário não encontrado:', username);
@@ -203,7 +114,7 @@ const login = async (req, res) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        nome: user.username 
+        nome: user.nome || user.username 
       } 
     });
   } catch (error) {
@@ -229,7 +140,7 @@ const verify = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const result = await pool.query('SELECT id, username FROM usuarios_admin WHERE id = $1', [decoded.userId]);
+    const result = await pool.query('SELECT id, username, nome FROM usuarios WHERE id = $1', [decoded.userId]);
     
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Usuário não encontrado' });
@@ -255,7 +166,7 @@ const register = async (req, res) => {
       });
     }
 
-    const existingUser = await pool.query('SELECT id FROM usuarios_admin WHERE username = $1', [username]);
+    const existingUser = await pool.query('SELECT id FROM usuarios WHERE username = $1', [username]);
     
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ 
@@ -266,8 +177,8 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO usuarios_admin (username, password_hash) VALUES ($1, $2) RETURNING id, username',
-      [username, hashedPassword]
+      'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3) RETURNING id, username, nome',
+      [username, hashedPassword, nome || username]
     );
 
     console.log('✅ Usuário registrado');
@@ -291,13 +202,13 @@ const testDatabase = async (req, res) => {
     console.log('🧪 Testando conexão com banco...');
     const timeResult = await pool.query('SELECT NOW() as current_time');
     
-    // Tentar contar usuários na tabela usuarios_admin
+    // Tentar contar usuários na tabela usuarios
     let userCount = 0;
     try {
-      const userCountResult = await pool.query('SELECT COUNT(*) FROM usuarios_admin');
+      const userCountResult = await pool.query('SELECT COUNT(*) FROM usuarios');
       userCount = parseInt(userCountResult.rows[0].count);
     } catch (tableError) {
-      console.log('⚠️ Tabela usuarios_admin não existe ainda');
+      console.log('⚠️ Tabela usuarios não existe ainda');
     }
     
     console.log('✅ Conexão com banco OK');
@@ -331,15 +242,15 @@ const resetAdmin = async (req, res) => {
     
     // Primeiro tentar atualizar
     const updateResult = await pool.query(
-      'UPDATE usuarios_admin SET password_hash = $1 WHERE username = $2 RETURNING username',
+      'UPDATE usuarios SET password_hash = $1 WHERE username = $2 RETURNING username',
       [hashedPassword, 'admin@vertttraue.com']
     );
 
     if (updateResult.rows.length === 0) {
       console.log('👤 Admin não existe, criando...');
       await pool.query(
-        'INSERT INTO usuarios_admin (username, password_hash) VALUES ($1, $2)',
-        ['admin@vertttraue.com', hashedPassword]
+        'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3)',
+        ['admin@vertttraue.com', hashedPassword, 'Administrador']
       );
     }
 
@@ -390,7 +301,7 @@ const createUser = async (req, res) => {
     }
 
     console.log('🔍 Verificando se usuário já existe:', username);
-    const existingUser = await pool.query('SELECT id FROM usuarios_admin WHERE username = $1', [username.trim()]);
+    const existingUser = await pool.query('SELECT id FROM usuarios WHERE username = $1', [username.trim()]);
     
     if (existingUser.rows.length > 0) {
       console.log('❌ Usuário já existe:', username);
@@ -405,8 +316,8 @@ const createUser = async (req, res) => {
     
     console.log('💾 Inserindo no banco de dados...');
     const result = await pool.query(
-      'INSERT INTO usuarios_admin (username, password_hash) VALUES ($1, $2) RETURNING id, username',
-      [username.trim(), hashedPassword]
+      'INSERT INTO usuarios (username, password_hash, nome) VALUES ($1, $2, $3) RETURNING id, username, nome',
+      [username.trim(), hashedPassword, nome || username.trim()]
     );
 
     console.log('✅ Usuário criado com sucesso:', result.rows[0]);
