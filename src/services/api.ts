@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://188.245.246.153:3001/api';
+const API_BASE_URL = '/api';
 
 // Função para fazer requisições autenticadas
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
