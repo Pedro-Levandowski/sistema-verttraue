@@ -1,23 +1,15 @@
-
 #!/bin/bash
 
-# Script de Deploy para VPS
-# Este script deve ser executado na VPS após git pull
+# Script de Deploy para VPS com IP fixo: 188.245.246.153
 
 set -e  # Parar em caso de erro
-
-cd "$(dirname "$0")/.."
-
-echo "🚀 === INICIANDO DEPLOY NA VPS ==="
-echo "📅 $(date)"
 
 # Cores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Função para log colorido
 log_info() {
     echo -e "${GREEN}ℹ️  $1${NC}"
 }
@@ -30,14 +22,20 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# Verificar se estamos no diretório correto
+# Ir para a raiz do projeto
+BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$BASE_DIR"
+
+log_info "🚀 === INICIANDO DEPLOY NA VPS ==="
+echo "📅 $(date)"
+
+# Verifica se está na raiz do projeto
 if [ ! -f "package.json" ]; then
-    log_error "Arquivo package.json não encontrado. Execute este script na raiz do projeto."
+    log_error "Arquivo package.json não encontrado. Execute o script a partir da pasta 'sistema-verttraue'."
     exit 1
 fi
 
-log_info "Parando processos existentes..."
-# Matar processos Node.js que possam estar rodando
+log_info "Parando processos antigos..."
 pkill -f "node.*app.js" || true
 pkill -f "npm.*start" || true
 sleep 2
@@ -50,10 +48,10 @@ cd backend
 npm install
 cd ..
 
-log_info "Verificando arquivo .env..."
+log_info "Verificando .env do backend..."
 if [ ! -f "backend/.env" ]; then
     log_warn "Arquivo .env não encontrado no backend!"
-    log_warn "Copie o .env.example e configure as variáveis:"
+    log_warn "Copie e edite manualmente:"
     log_warn "cp backend/.env.example backend/.env"
 fi
 
@@ -66,62 +64,56 @@ node -e "
 const pool = require('./config/database');
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
-    console.log('❌ Erro na conexão:', err.message);
+    console.log('❌ Erro ao conectar com banco:', err.message);
     process.exit(1);
   } else {
-    console.log('✅ Banco conectado:', res.rows[0].now);
+    console.log('✅ Banco conectado com sucesso:', res.rows[0].now);
     process.exit(0);
   }
 });
-" || {
-    log_error "Falha na conexão com banco de dados!"
-    log_error "Verifique as configurações no .env"
-    exit 1
-}
-
-log_info "Iniciando backend..."
-nohup node app.js > ../logs/backend.log 2>&1 &
-BACKEND_PID=$!
+"
 cd ..
 
-# Aguardar backend inicializar
-sleep 3
+log_info "Iniciando backend..."
+mkdir -p logs pids
+nohup node backend/app.js > logs/backend.log 2>&1 &
+BACKEND_PID=$!
+
+sleep 4
 
 log_info "Testando health check..."
-if curl -s http://188.245.246.153:3001/health > /dev/null; then
-    log_info "✅ Backend iniciado com sucesso (PID: $BACKEND_PID)"
+if curl -s http://localhost:3001/health > /dev/null; then
+    log_info "✅ Backend OK (PID $BACKEND_PID)"
 else
     log_error "❌ Backend não respondeu ao health check"
     exit 1
 fi
 
-log_info "Configurando servidor web estático..."
-# Servir arquivos estáticos do dist
+log_info "Iniciando frontend (porta 8080)..."
 if command -v python3 &> /dev/null; then
     cd dist
     nohup python3 -m http.server 8080 > ../logs/frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd ..
-    log_info "✅ Frontend servido na porta 8080 (PID: $FRONTEND_PID)"
+    log_info "✅ Frontend servido com Python (PID $FRONTEND_PID)"
 elif command -v serve &> /dev/null; then
     cd dist
     nohup serve -s . -l 8080 > ../logs/frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd ..
-    log_info "✅ Frontend servido na porta 8080 (PID: $FRONTEND_PID)"
+    log_info "✅ Frontend servido com serve (PID $FRONTEND_PID)"
 else
-    log_warn "Python3 ou 'serve' não encontrado. Instale um deles:"
+    log_warn "Python3 ou serve não encontrado. Instale um deles."
     log_warn "npm install -g serve"
 fi
 
-# Salvar PIDs para controle
 echo $BACKEND_PID > pids/backend.pid
 echo $FRONTEND_PID > pids/frontend.pid
 
 echo ""
-log_info "🎉 === DEPLOY CONCLUÍDO COM SUCESSO ==="
-log_info "🌐 Frontend: http://$(hostname -I | awk '{print $1}'):8080"
-log_info "🔧 Backend API: http://$(hostname -I | awk '{print $1}'):3001"
-log_info "📋 Health Check: http://$(hostname -I | awk '{print $1}'):3001/health"
+log_info "🎉 === DEPLOY FINALIZADO COM SUCESSO ==="
+log_info "🌐 Frontend: http://188.245.246.153:8080"
+log_info "🔧 Backend API: http://188.245.246.153:3001"
+log_info "📋 Health Check: http://188.245.246.153:3001/health"
 log_info "📊 Logs: tail -f logs/backend.log"
 echo ""
