@@ -237,13 +237,13 @@ const resetAdmin = async (req, res) => {
   try {
     console.log('🔄 === RESETANDO USUÁRIO ADMIN ===');
     
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    const hashedPassword = await bcrypt.hash('adminvt18', 10);
     console.log('🔐 Senha hasheada gerada');
     
     // Primeiro tentar atualizar
     const updateResult = await pool.query(
       'UPDATE usuarios SET password_hash = $1 WHERE username = $2 RETURNING username',
-      [hashedPassword, 'admin@vertttraue.com']
+      [hashedPassword, 'admin@verttraue.com']
     );
 
     if (updateResult.rows.length === 0) {
