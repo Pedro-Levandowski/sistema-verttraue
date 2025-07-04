@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://SEU_IP_DA_VPS:3001/api'; // Substitua SEU_IP_DA_VPS pelo IP real
 
 // Função para fazer requisições autenticadas
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
