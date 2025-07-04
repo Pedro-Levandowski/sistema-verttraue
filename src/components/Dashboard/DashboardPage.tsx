@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { Package, Factory, Users, DollarSign, Settings, TrendingUp } from 'lucide-react';
+import { Package, Factory, Users, DollarSign, TrendingUp } from 'lucide-react';
 import MenuCard from '../Layout/MenuCard';
 import { useProducts } from '../../hooks/useProducts';
 import { useSuppliers } from '../../hooks/useSuppliers';
@@ -12,7 +12,7 @@ import { useKits } from '../../hooks/useKits';
 import { useConjuntos } from '../../hooks/useConjuntos';
 
 interface DashboardPageProps {
-  onNavigate: (page: 'dashboard' | 'estoque' | 'fornecedores' | 'afiliados' | 'vendas' | 'debug') => void;
+  onNavigate: (page: 'dashboard' | 'estoque' | 'fornecedores' | 'afiliados' | 'vendas') => void;
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
@@ -116,8 +116,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* Menu Principal - Visual clássico mais agradável */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Menu Principal - Removido Debug API */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           <MenuCard
             title="Estoque"
             icon={Package}
@@ -144,13 +144,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             icon={DollarSign}
             color="#f59e0b"
             onClick={() => onNavigate('vendas')}
-          />
-          
-          <MenuCard
-            title="Debug API"
-            icon={Settings}
-            color="#ef4444"
-            onClick={() => onNavigate('debug')}
           />
         </div>
       </div>
