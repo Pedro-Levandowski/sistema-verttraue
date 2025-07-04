@@ -80,7 +80,6 @@ pool.query('SELECT NOW()', (err, res) => {
 }
 
 log_info "Iniciando backend..."
-cd backend
 nohup node app.js > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
