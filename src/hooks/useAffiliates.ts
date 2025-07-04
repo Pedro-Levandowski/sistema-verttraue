@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Affiliate } from '../types';
 import { affiliatesAPI } from '../services/api';
@@ -22,12 +21,28 @@ export const useAffiliates = () => {
     }
   };
 
-  const createAffiliate = async (affiliateData: Omit<Affiliate, 'id'>) => {
+  const createAffiliate = async (affiliateData: Affiliate) => {
+    console.log('➕ [useAffiliates] Criando afiliado:', affiliateData);
     try {
-      const newAffiliate = await affiliatesAPI.create(affiliateData);
+      // USAR O ID FORNECIDO PELO USUÁRIO - NÃO GERAR AUTOMATICAMENTE
+      const backendData = {
+        id: affiliateData.id, // Usar o ID exato fornecido pelo usuário
+        nome_completo: affiliateData.nome_completo,
+        email: affiliateData.email,
+        telefone: affiliateData.telefone || '',
+        comissao: affiliateData.comissao || 0,
+        chave_pix: affiliateData.chave_pix || '',
+        tipo_chave_pix: affiliateData.tipo_chave_pix || 'aleatoria',
+        ativo: affiliateData.ativo !== false
+      };
+      
+      console.log('📤 [useAffiliates] Enviando para backend:', backendData);
+      const newAffiliate = await affiliatesAPI.create(backendData);
       setAffiliates(prev => [...prev, newAffiliate]);
+      console.log('✅ [useAffiliates] Afiliado criado com sucesso');
       return newAffiliate;
     } catch (err) {
+      console.error('❌ [useAffiliates] Erro ao criar afiliado:', err);
       throw err;
     }
   };
