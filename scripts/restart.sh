@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+cd "$(dirname "$0")/.."
+
 # Script para reiniciar o sistema na VPS
 
 set -e

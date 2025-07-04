@@ -3,6 +3,8 @@
 
 # Script para verificar status dos serviços
 
+cd "$(dirname "$0")/.."
+
 echo "📊 === STATUS DO SISTEMA ==="
 echo "📅 $(date)"
 echo ""

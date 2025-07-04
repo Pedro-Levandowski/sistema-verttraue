@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+cd "$(dirname "$0")/.."
+
 # Script para visualizar logs
 
 if [ "$1" = "backend" ]; then

@@ -6,6 +6,8 @@
 
 set -e  # Parar em caso de erro
 
+cd "$(dirname "$0")/.."
+
 echo "🚀 === INICIANDO DEPLOY NA VPS ==="
 echo "📅 $(date)"
 

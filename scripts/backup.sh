@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+cd "$(dirname "$0")/.."
+
 echo "💾 Criando backup do banco de dados..."
 
 # Carregar variáveis do .env

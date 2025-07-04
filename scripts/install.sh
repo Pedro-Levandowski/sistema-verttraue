@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+cd "$(dirname "$0")/.."
+
 echo "🔧 Instalando Sistema vertttraue..."
 
 # Verificar se PostgreSQL está instalado

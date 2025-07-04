@@ -3,6 +3,8 @@
 
 # Script para parar todos os serviços
 
+cd "$(dirname "$0")/.."
+
 echo "🛑 === PARANDO SISTEMA ==="
 
 # Parar usando PIDs salvos
