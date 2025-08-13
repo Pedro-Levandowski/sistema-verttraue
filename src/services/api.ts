@@ -1,100 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Função para fazer requisições autenticadas
-const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('authToken');
-  
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  };
-
-  console.log(`🌐 API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
-  console.log('📤 Request config:', config);
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    console.log(`📥 Response status: ${response.status}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ API Error (${response.status}):`, errorText);
-      
-      let error;
-      try {
-        error = JSON.parse(errorText);
-      } catch {
-        error = { error: errorText || `HTTP ${response.status}` };
-      }
-      
-      throw new Error(error.error || error.message || `HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log(`✅ API Success: ${endpoint}`, data);
-    return data;
-  } catch (fetchError) {
-    console.error(`🚨 Fetch Error:`, fetchError);
-    throw fetchError;
-  }
-};
-
-// Auth API
-export const authAPI = {
-  initDatabase: async () => {
-    return makeRequest('/auth/init-database', { method: 'POST' });
-  },
-
-  login: async (email: string, password: string) => {
-    console.log('🔐 Tentando login com:', { email, password: '***' });
-    
-    return makeRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        username: email, // Backend espera 'username'
-        password: password 
-      }),
-    });
-  },
-  
-  register: async (email: string, password: string, nome?: string) => {
-    return makeRequest('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        username: email, 
-        password, 
-        nome 
-      }),
-    });
-  },
-
-  verify: async () => {
-    return makeRequest('/auth/verify');
-  },
-
-  testDatabase: async () => {
-    return makeRequest('/auth/test-database');
-  },
-
-  resetAdmin: async () => {
-    return makeRequest('/auth/reset-admin', { method: 'POST' });
-  },
-
-  createUser: async (username: string, password: string, nome?: string) => {
-    return makeRequest('/auth/create-user', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        username, 
-        password, 
-        nome 
-      }),
-    });
-  }
-};
+import { makeRequest, API_BASE_URL } from './apiConfig';
+import { authAPI } from './authAPI';
 
 // Products API
 export const productsAPI = {
@@ -268,7 +174,7 @@ export const estoqueAPI = {
 export const debugAPI = {
   healthCheck: async () => {
     try {
-      const response = await fetch('http://localhost:3001/health');
+      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
       return await response.json();
     } catch (error) {
       console.error('❌ Health check failed:', error);
@@ -288,6 +194,9 @@ export const debugAPI = {
     return authAPI.login(email, password);
   }
 };
+
+// Exportar authAPI e outros
+export { authAPI };
 
 export default {
   auth: authAPI,
